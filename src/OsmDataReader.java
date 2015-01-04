@@ -1,6 +1,7 @@
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.ByteArrayInputStream;
+import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -22,13 +23,15 @@ import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.io.File;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 import com.myjavatools.web.ClientHttpRequest;
 
 import org.openstreetmap.osmosis.core.OsmosisRuntimeException;
 import org.openstreetmap.osmosis.core.container.v0_6.EntityContainer;
 import org.openstreetmap.osmosis.core.container.v0_6.NodeContainer;
+import org.openstreetmap.osmosis.core.container.v0_6.RelationContainer;
 import org.openstreetmap.osmosis.core.container.v0_6.WayContainer;
 import org.openstreetmap.osmosis.core.domain.v0_6.*;
 import org.openstreetmap.osmosis.core.filter.common.IdTracker;
@@ -83,8 +86,9 @@ public class OsmDataReader {
 	static SimpleObjectStore<EntityContainer> allRelations = new SimpleObjectStore<EntityContainer>(new SingleClassObjectSerializationFactory(EntityContainer.class), "afrl", true);
 
 	
-	static TreeMap<Long, Way> gibmirways = new TreeMap<Long, Way>();
 	static TreeMap<Long, Node> gibmirnodes = new TreeMap<Long, Node>();
+	static TreeMap<Long, Way> gibmirways = new TreeMap<Long, Way>();
+	static TreeMap<Long, Relation> gibmirrelations = new TreeMap<Long, Relation>();
 
 	static String land = "";
 	static Integer land_id = -1;
@@ -98,11 +102,12 @@ public class OsmDataReader {
 	}
 
 
-	public void ReadDataFromOverpass(final Evaluation evaluation, Integer relationsid) {
+	public HousenumberCache ReadDataFromOverpass(final Evaluation evaluation, Integer relationsid) {
 		URL                url; 
 		URLConnection      urlConn; 
 		BufferedReader     dis;
 
+		final HousenumberCache housenumbers = new HousenumberCache();
 		
 		String overpass_url = "http://overpass-api.de";
 		String overpass_queryurl = "/api/interpreter?data=";
@@ -135,6 +140,7 @@ public class OsmDataReader {
 			urlConn.setDoInput(true); 
 			urlConn.setUseCaches(false);
 			urlConn.setRequestProperty("User-Agent", "regio-osm.de Housenumber Evaluation, contact: strassenliste@diesei.de");
+//			urlConn.setRequestProperty("Accept-Encoding", "gzip, compress");
 			
 			String inputline = "";
 			dis = new BufferedReader(new InputStreamReader(urlConn.getInputStream(),"UTF-8"));
@@ -142,12 +148,29 @@ public class OsmDataReader {
 			{ 
 				osmresultcontent.append(inputline + "\n");
 			} 
+			
+			Integer headeri = 1;
+			System.out.println("Header-Fields Ausgabe ...");
+			String responseContentEncoding = "";
+			while(urlConn.getHeaderFieldKey(headeri) != null) {
+				System.out.println("  Header # " + headeri 
+					+ ":  [" + urlConn.getHeaderFieldKey(headeri)
+					+ "] ===" + urlConn.getHeaderField(headeri) + "===");
+				if(urlConn.getHeaderFieldKey(headeri).equals("Content-Encoding"))
+					responseContentEncoding = urlConn.getHeaderField(headeri);
+				headeri++;
+			}
 			dis.close();
 			
 				// ok, osm result is in osmresultcontent.toString() available
 			System.out.println("Dateilänge url Datenempfang: " + osmresultcontent.toString().length());
 			System.out.println("Dateioutput ===" + osmresultcontent.toString() + "===");
 
+
+			if(responseContentEncoding.equals("gzip")) {
+				//http://www.mkyong.com/java/how-to-decompress-files-from-a-zip-file/			
+				//unzip(osmresultcontent.toString());
+			}
 			
 			Sink sinkImplementation = new Sink() {
 
@@ -163,9 +186,9 @@ public class OsmDataReader {
 					System.out.println("hallo Sink.complete  aktiv:    nodes #"+nodes_count+"   ways #"+ways_count+"   relations #"+relations_count);
 
 						// loop over all osm node objects
-	    	    	for (Map.Entry<Long, Node> waymap: gibmirnodes.entrySet()) {
-	    				Long objectid = waymap.getKey();
-		        		Collection<Tag> tags = waymap.getValue().getTags();
+	    	    	for (Map.Entry<Long, Node> nodemap: gibmirnodes.entrySet()) {
+	    				Long objectid = nodemap.getKey();
+		        		Collection<Tag> tags = nodemap.getValue().getTags();
 		        		String address_street = "";
 		        		String address_housenumber = "";
 		        		HashMap<String,String> keyvalues = new HashMap<String,String>();
@@ -180,17 +203,17 @@ public class OsmDataReader {
 						}
 						if(		(! address_street.equals(""))
 							&& 	(! address_housenumber.equals(""))) {
-							Workcache_Entry osmhousenumber = new Workcache_Entry(evaluation.getHousenumberlist().ishousenumberadditionCaseSentity());
+							Housenumber osmhousenumber = new Housenumber(evaluation.getHousenumberlist().ishousenumberadditionCaseSentity());
 							osmhousenumber.setStrasse(address_street);
 							osmhousenumber.set_osm_tag(keyvalues);
 							osmhousenumber.setOSMObjekt("node", objectid);
 							osmhousenumber.setHausnummer(address_housenumber);
-							String objectlonlat = waymap.getValue().getLongitude() + " " + waymap.getValue().getLatitude();
+							String objectlonlat = nodemap.getValue().getLongitude() + " " + nodemap.getValue().getLatitude();
 							osmhousenumber.setLonlat(objectlonlat);
 							osmhousenumber.setLonlat_source("OSM");
-							osmhousenumber.setTreffertyp(Workcache_Entry.Treffertyp.OSM_ONLY);
+							osmhousenumber.setTreffertyp(Housenumber.Treffertyp.OSM_ONLY);
 
-							evaluation.housenumberlist.update(osmhousenumber);
+							housenumbers.add_newentry(osmhousenumber);
 						}
 	    			}
 
@@ -200,6 +223,8 @@ public class OsmDataReader {
 		        		Collection<Tag> tags = waymap.getValue().getTags();
 		        		String address_street = "";
 		        		String address_housenumber = "";
+		        		String centroid_lon = "";
+		        		String centroid_lat = "";
 		        		HashMap<String,String> keyvalues = new HashMap<String,String>();
 		        		for (Tag tag: tags) {
 		        			System.out.println("way #" + objectid + ": Tag [" + tag.getKey() + "] ==="+tag.getValue()+"===");
@@ -209,20 +234,56 @@ public class OsmDataReader {
 			        			address_street = tag.getValue();
 			        		if(tag.getKey().equals("addr:housenumber"))
 			        			address_housenumber = tag.getValue();
-						}
+			        		if(tag.getKey().equals("centroid_lon"))
+			        			centroid_lon = tag.getValue();
+			        		if(tag.getKey().equals("centroid_lat"))
+			        			centroid_lat = tag.getValue();
+		        		}
 						if(		(! address_street.equals(""))
 							&& 	(! address_housenumber.equals(""))) {
-							Workcache_Entry osmhousenumber = new Workcache_Entry(evaluation.getHousenumberlist().ishousenumberadditionCaseSentity());
+							Housenumber osmhousenumber = new Housenumber(evaluation.getHousenumberlist().ishousenumberadditionCaseSentity());
 							osmhousenumber.setStrasse(address_street);
 							osmhousenumber.set_osm_tag(keyvalues);
 							osmhousenumber.setOSMObjekt("way", objectid);
 							osmhousenumber.setHausnummer(address_housenumber);
+							String objectlonlat = centroid_lon + " " + centroid_lat;
+							osmhousenumber.setLonlat(objectlonlat);
 //set centroid or something similar from way object   osmhousenumber.setLonlat(rs_objekte.getString("lonlat"));
 							osmhousenumber.setLonlat_source("OSM");
-							osmhousenumber.setTreffertyp(Workcache_Entry.Treffertyp.OSM_ONLY);
-							
-							
-							evaluation.housenumberlist.update(osmhousenumber);
+							osmhousenumber.setTreffertyp(Housenumber.Treffertyp.OSM_ONLY);
+
+							housenumbers.add_newentry(osmhousenumber);
+						}
+	    			}
+		
+	    	    		// loop over all osm relation objects with addr:housenumber Tag
+	    	    	for (Map.Entry<Long, Relation> relationmap: gibmirrelations.entrySet()) {
+	    				Long objectid = relationmap.getKey();
+		        		Collection<Tag> tags = relationmap.getValue().getTags();
+		        		String address_street = "";
+		        		String address_housenumber = "";
+		        		HashMap<String,String> keyvalues = new HashMap<String,String>();
+		        		for (Tag tag: tags) {
+		        			System.out.println("relation #" + objectid + ": Tag [" + tag.getKey() + "] ==="+tag.getValue()+"===");
+		        			keyvalues.put(tag.getKey(), tag.getValue());
+			        		if(		tag.getKey().equals("addr:street")
+			        			||	tag.getKey().equals("addr:place"))
+			        			address_street = tag.getValue();
+			        		if(tag.getKey().equals("addr:housenumber"))
+			        			address_housenumber = tag.getValue();
+						}
+						if(		(! address_street.equals(""))
+							&& 	(! address_housenumber.equals(""))) {
+							Housenumber osmhousenumber = new Housenumber(evaluation.getHousenumberlist().ishousenumberadditionCaseSentity());
+							osmhousenumber.setStrasse(address_street);
+							osmhousenumber.set_osm_tag(keyvalues);
+							osmhousenumber.setOSMObjekt("relation", objectid);
+							osmhousenumber.setHausnummer(address_housenumber);
+	//set centroid or something similar from way object   osmhousenumber.setLonlat(rs_objekte.getString("lonlat"));
+							osmhousenumber.setLonlat_source("OSM");
+							osmhousenumber.setTreffertyp(Housenumber.Treffertyp.OSM_ONLY);
+
+							housenumbers.add_newentry(osmhousenumber);
 						}
 	    			}
 				}
@@ -259,6 +320,29 @@ public class OsmDataReader {
 						WayContainer wayc = (WayContainer) entityContainer;
 						Way way = wayc.getEntity();
 						//System.out.println("Weg "+way.getWayNodes()+"===");
+						List<WayNode> actwaynodes = way.getWayNodes();
+						System.out.println("Weg enthält Anzahl knoten: "+actwaynodes.size());
+						Integer lfdnr = 0;
+						Double lon_sum = 0.0D;
+						Double lat_sum = 0.0D;
+						List<Point> points = new LinkedList<Point>();
+						for (WayNode waynode: actwaynodes) {
+							Node actnode = gibmirnodes.get(waynode.getNodeId());
+							Point actpoint = new Point(actnode.getLongitude(), actnode.getLatitude());
+							lon_sum += actnode.getLongitude();
+							lat_sum += actnode.getLatitude();
+							points.add(actpoint);
+							//System.out.println(" Node # " + lfdnr + "    id: " + actnode.getId() + "    lon: " + actnode.getLongitude() + "   lat: "+actnode.getLatitude());
+							lfdnr++;
+						}
+		        		Collection<Tag> waytags = way.getTags();
+						for (Tag tag: waytags) {
+		        			System.out.println("Tag [" + tag.getKey() + "] ==="+tag.getValue()+"===");
+						}
+						Double centroid_lon = lon_sum / lfdnr;
+						Double centroid_lat = lat_sum / lfdnr;
+						waytags.add(new Tag("centroid_lon", centroid_lon.toString()));
+						waytags.add(new Tag("centroid_lat", centroid_lat.toString()));
 			        
 		    			gibmirways.put(entity.getId(), way);
 			        
@@ -269,6 +353,9 @@ public class OsmDataReader {
 			        	System.out.println("Relation   " + entity.toString());
 			        	List<RelationMember> relmembers =  ((Relation) entity).getMembers();
 
+						RelationContainer relationc = (RelationContainer) entityContainer;
+						Relation relation = relationc.getEntity();
+			        	
 		        		Collection<Tag> relationtags = entity.getTags();
 		        		String relationType = "";
 		        		String relationName = "";
@@ -278,6 +365,8 @@ public class OsmDataReader {
 		        				relationType = tag.getValue();
 		        			if(	tag.getKey().equals("name"))
 		        				relationName = tag.getValue();
+		        			if(tag.getKey().equals("addr:housenumber"))
+				    			gibmirrelations.put(entity.getId(), relation);
 						}
 
 						if(! relationType.equals("associatedStreet")) {
@@ -395,17 +484,22 @@ if(memberi > 0)
 			System.out.println("Error due to getting mapquest api-request (malformedurlexception). url was ==="+url_string+"===");					
 			System.out.println(mue.toString());
 			String local_messagetext = "MalformedURLException: URL-Request was ==="+url_string+"=== and got Trace ==="+mue.toString()+"===";
-			return;
+			return housenumbers;
 		} catch (IOException ioe) {
 			System.out.println("Error due to getting mapquest api-request (ioexception). url was ==="+url_string+"===");					
 			System.out.println(ioe.toString());
 			String local_messagetext = "IOException: URL-Request was ==="+url_string+"=== and got Trace ==="+ioe.toString()+"===";
-			return;
+			return housenumbers;
 		}
+		
+		return housenumbers;
 	}
 
 
-	public void ReadListFromDB(Evaluation evaluation) {
+	public HousenumberCache ReadListFromDB(Evaluation evaluation) {
+		final HousenumberCache housenumbers = new HousenumberCache();
+
+
 		if(		(dbconnection.equals("")) 
 			||	(dbusername.equals(""))
 			||	(dbpassword.equals(""))
@@ -414,11 +508,11 @@ if(memberi > 0)
 			||	(evaluation.getJobname().equals(""))
 			)
 		{
-			return;
+			return housenumbers;
 		}
 if(1 == 1) {
 	System.out.println("FEHLER FEHLER: ReadListFromDB has not been coded yet, CANCEL");
-	return;
+	return housenumbers;
 }
 	
 		String sqlqueryofficialhousenumbers = "";
@@ -427,7 +521,7 @@ if(1 == 1) {
 			Class.forName("org.postgresql.Driver");
 		} catch (ClassNotFoundException e) {
 			e.printStackTrace();
-			return;
+			return housenumbers;
 		}
 
 		try {
@@ -463,18 +557,18 @@ if(1 == 1) {
 				tempAkthausnummer = rsqueryofficialhousenumbers.getString("hausnummer_sortierbar");
 				tempAkthausnummer = tempAkthausnummer.substring(1, HAUSNUMMERSORTIERBARLENGTH);
 
-				Workcache_Entry newofficialhousenumber = new Workcache_Entry(evaluation.getHousenumberlist().ishousenumberadditionCaseSentity());
+				Housenumber newofficialhousenumber = new Housenumber(evaluation.getHousenumberlist().ishousenumberadditionCaseSentity());
 
 				newofficialhousenumber.setStrasse(rsqueryofficialhousenumbers.getString("strasse"));
 				newofficialhousenumber.setHausnummer(rsqueryofficialhousenumbers.getString("hausnummer"));
-				newofficialhousenumber.setTreffertyp(Workcache_Entry.Treffertyp.LIST_ONLY);
+				newofficialhousenumber.setTreffertyp(Housenumber.Treffertyp.LIST_ONLY);
 	
-				evaluation.housenumberlist.update(newofficialhousenumber);
+				housenumbers.add_newentry(newofficialhousenumber);
 			} // Ende sql-Schleife über alle Stadt-only-Hausnummern der aktuellen Strasse - while(rsqueryofficialhousenumbers.next()) {
 	
-			for(int loadindex=0; loadindex < evaluation.housenumberlist.length(); loadindex++) {
-				Workcache_Entry aktcacheentry = evaluation.housenumberlist.entry(loadindex);
-			}
+//			for(int loadindex=0; loadindex < evaluation.housenumberlist.length(); loadindex++) {
+//				Workcache_Entry aktcacheentry = evaluation.housenumberlist.entry(loadindex);
+//			}
 	
 		
 		} catch (SQLException e) {
@@ -482,5 +576,7 @@ if(1 == 1) {
 				+ sqlqueryofficialhousenumbers + "===");
 			e.printStackTrace();
 		}
+		
+		return housenumbers;
 	}
 }

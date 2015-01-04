@@ -31,7 +31,9 @@ public class HousenumberlistReader {
 	}
 
 
-	public void ReadListFromDB(Evaluation evaluation) {
+	public HousenumberCache ReadListFromDB(Evaluation evaluation) {
+		final HousenumberCache housenumbers = new HousenumberCache();
+
 		if(		(dbconnection.equals("")) 
 			||	(dbusername.equals(""))
 			||	(dbpassword.equals(""))
@@ -40,7 +42,7 @@ public class HousenumberlistReader {
 			||	(evaluation.getJobname().equals(""))
 			)
 		{
-			return;
+			return housenumbers;
 		}
 
 		String sqlqueryofficialhousenumbers = "";
@@ -49,7 +51,7 @@ public class HousenumberlistReader {
 			Class.forName("org.postgresql.Driver");
 		} catch (ClassNotFoundException e) {
 			e.printStackTrace();
-			return;
+			return housenumbers;
 		}
 
 		try {
@@ -85,18 +87,18 @@ public class HousenumberlistReader {
 				tempAkthausnummer = rsqueryofficialhousenumbers.getString("hausnummer_sortierbar");
 				tempAkthausnummer = tempAkthausnummer.substring(1, HAUSNUMMERSORTIERBARLENGTH);
 
-				Workcache_Entry newofficialhousenumber = new Workcache_Entry(evaluation.getHousenumberlist().ishousenumberadditionCaseSentity());
+				Housenumber newofficialhousenumber = new Housenumber(evaluation.getHousenumberlist().ishousenumberadditionCaseSentity());
 
 				newofficialhousenumber.setStrasse(rsqueryofficialhousenumbers.getString("strasse"));
 				newofficialhousenumber.setHausnummer(rsqueryofficialhousenumbers.getString("hausnummer"));
-				newofficialhousenumber.setTreffertyp(Workcache_Entry.Treffertyp.LIST_ONLY);
+				newofficialhousenumber.setTreffertyp(Housenumber.Treffertyp.LIST_ONLY);
 	
-				evaluation.housenumberlist.update(newofficialhousenumber);
+				housenumbers.add_newentry(newofficialhousenumber);
 			} // Ende sql-Schleife über alle Stadt-only-Hausnummern der aktuellen Strasse - while(rsqueryofficialhousenumbers.next()) {
 	
-			for(int loadindex=0; loadindex < evaluation.housenumberlist.length(); loadindex++) {
-				Workcache_Entry aktcacheentry = evaluation.housenumberlist.entry(loadindex);
-			}
+//			for(int loadindex=0; loadindex < evaluation.housenumberlist.length(); loadindex++) {
+//				Workcache_Entry aktcacheentry = evaluation.housenumberlist.entry(loadindex);
+//			}
 	
 		
 		} catch (SQLException e) {
@@ -104,5 +106,7 @@ public class HousenumberlistReader {
 				+ sqlqueryofficialhousenumbers + "===");
 			e.printStackTrace();
 		}
+
+		return housenumbers;
 	}
 }
