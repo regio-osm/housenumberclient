@@ -25,7 +25,7 @@ import java.util.Map;
 */
 
 
-public class Workcache_Entry {
+public class Housenumber {
 	
 	public enum Treffertyp {
 		OSM_ONLY, IDENTICAL, LIST_ONLY, UNSET;
@@ -63,13 +63,22 @@ public class Workcache_Entry {
 	}
 		
 
-	public Workcache_Entry(boolean isHousenumberaddition_exactly)  {
+	public Housenumber(boolean isHousenumberaddition_exactly)  {
 		this.isHousenumberaddition_exactly = isHousenumberaddition_exactly;
 	}
 	
-	
+		/**
+		 * 
+		 * @return Key for the cache entry of the object. Normally will be build with streetname and housenumber
+		 */
+//TODO in municipalities, where streetname and housenumber are not unique, one more value must be added, for example postcode
+	public String getListKey() {
+		return this.getStrasse().toLowerCase() + this.getHausnummerSortierbar().toLowerCase();
+	}
+
+
 	// set an entry
-	public void set(Workcache_Entry entry) {
+	public void set(Housenumber entry) {
 		String list_invalid_params = "";
 
 		if(entry.hausnummer_sortierbar.equals(""))
@@ -150,7 +159,7 @@ public class Workcache_Entry {
 		return entryastext;
 	}
 
-	public Workcache_Entry update( Workcache_Entry in_entry) throws HausnummernException {
+	public Housenumber update( Housenumber in_entry) throws HausnummernException {
 		if( ! this.hausnummer.equals("")) {
 			setHausnummerNormalisiert(this.hausnummer);
 		}
@@ -338,6 +347,19 @@ public class Workcache_Entry {
 		}
 	}
 
+		/**
+		 * 
+		 * Attention: use this method only for direct copy from get_osm_tag.
+		 * 				For analyzing correct osm tags, use set_osm_tag instead
+		 * 
+		 * @param osmtags  string content with net osm tags. Use it only from get_osm_tag 
+		 */
+	public void set_osm_tag_rawvalues(Housenumber sourceentry) {
+		this.osm_tag = sourceentry.osm_tag;
+		this.osm_tag_prio = sourceentry.osm_tag_prio;
+	}
+		
+	
 	public void set_osm_tag(HashMap <String,String>  in_tags) {
 		int START_PRIO = 99;
 		

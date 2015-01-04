@@ -13,7 +13,7 @@ public class Evaluation {
 	private String country = "";
 	private String municipality = "";
 	private String jobname = "";
-	public Workcache housenumberlist = new Workcache();
+	public HousenumberCache housenumberlist = new HousenumberCache();
 
 
 	public void initialize() {
@@ -37,7 +37,7 @@ public class Evaluation {
 	}
 
 
-	public Workcache getHousenumberlist() {
+	public HousenumberCache getHousenumberlist() {
 		return this.housenumberlist;
 	}
 
@@ -111,15 +111,23 @@ public class Evaluation {
 		OsmDataReader osmreader = new OsmDataReader();
 		
 //Integer relationsid = 1221158;	// Geetbets, 38 OSM Hausnummern bei 2518 Listenhausnummern
-Integer relationsid = 1398489;	// Oudenburg, jede Menge associatedStreet Relationen
 		
-		Evaluation eva = new Evaluation();
-		eva.setMunicipality("België", "Mol");
-		eva.setHousenumberAdditionCaseSensity(false);
-		System.out.println("Number of housenumberlist entries at start: " + eva.housenumberlist.length());
-		//hnrreader.ReadListFromDB(eva);
-		osmreader.ReadDataFromOverpass(eva, relationsid);
+		Evaluation evaluation = new Evaluation();
+		//Integer relationsid = 196184;	// Oudenburg, jede Menge associatedStreet Relationen
+		//evaluation.setMunicipality("België", "Zaventem");
+		//Integer relationsid = 2597486;
+		//evaluation.setMunicipality("Poland", "Grudziądz");
+
+		Integer relationsid = 2078291;
+		evaluation.setMunicipality("Niederlande", "Maastricht");
+
+		evaluation.setHousenumberAdditionCaseSensity(false);
+		System.out.println("Number of housenumberlist entries at start: " + evaluation.housenumberlist.length());
+		HousenumberCache list_housenumbers = hnrreader.ReadListFromDB(evaluation);
+		HousenumberCache osm_housenumbers = osmreader.ReadDataFromOverpass(evaluation, relationsid);
+		HousenumberCache evaluated_housenumbers = list_housenumbers.merge(osm_housenumbers);
+		evaluated_housenumbers.printhtml("test.html");
 		System.out.println("Number of housenumberlist entries after load of official housenumber list: "
-			+ eva.housenumberlist.length() + "   " + eva.housenumberlist.count_unchanged());
+			+ evaluation.housenumberlist.length() + "   " + evaluation.housenumberlist.count_unchanged());
 	}
 }
