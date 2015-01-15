@@ -8,12 +8,11 @@
 import de.regioosm.housenumbers.Applicationconfiguration;
 
 
-
 public class Evaluation {
 	private String country = "";
 	private String municipality = "";
 	private String jobname = "";
-	public HousenumberCache housenumberlist = new HousenumberCache();
+	public HousenumberCollection housenumberlist = new HousenumberCollection();
 
 
 	public void initialize() {
@@ -37,7 +36,7 @@ public class Evaluation {
 	}
 
 
-	public HousenumberCache getHousenumberlist() {
+	public HousenumberCollection getHousenumberlist() {
 		return this.housenumberlist;
 	}
 
@@ -109,25 +108,52 @@ public class Evaluation {
 									configuration.db_application_username, 
 									configuration.db_application_password);
 		OsmDataReader osmreader = new OsmDataReader();
-		
-//Integer relationsid = 1221158;	// Geetbets, 38 OSM Hausnummern bei 2518 Listenhausnummern
-		
 		Evaluation evaluation = new Evaluation();
-		//Integer relationsid = 196184;	// Oudenburg, jede Menge associatedStreet Relationen
+
+
+		//Integer relationsid = 1221158;	// Geetbets, 38 OSM Hausnummern bei 2518 Listenhausnummern
+		//Integer relationsid = 196184;	// Zaventem
 		//evaluation.setMunicipality("België", "Zaventem");
 		//Integer relationsid = 2597486;
 		//evaluation.setMunicipality("Poland", "Grudziądz");
 
-		Integer relationsid = 2078291;
-		evaluation.setMunicipality("Niederlande", "Maastricht");
+		
+		//Integer relationsid = 1263541;
+		//evaluation.setMunicipality("België", "Geel");
 
+		//Integer relationsid = 2078291;
+		//evaluation.setMunicipality("Niederlande", "Maastricht");
+		//Integer relationsid = 161966;
+		//evaluation.setMunicipality("Bundesrepublik Deutschland", "Kühbach");
+
+		//Integer relationsid = 62464;
+		//evaluation.setMunicipality("Bundesrepublik Deutschland", "Würzburg");
+
+		//Integer relationsid = 62578;
+		//evaluation.setMunicipality("Bundesrepublik Deutschland", "Köln");
+
+		//Integer relationsid = 2593494;
+		//evaluation.setMunicipality("Poland", "Gorzów Wielkopolski");
+
+		Integer relationsid = 2597485;
+		evaluation.setMunicipality("Poland", "Gdańsk");
+		
+		
 		evaluation.setHousenumberAdditionCaseSensity(false);
 		System.out.println("Number of housenumberlist entries at start: " + evaluation.housenumberlist.length());
-		HousenumberCache list_housenumbers = hnrreader.ReadListFromDB(evaluation);
-		HousenumberCache osm_housenumbers = osmreader.ReadDataFromOverpass(evaluation, relationsid);
-		HousenumberCache evaluated_housenumbers = list_housenumbers.merge(osm_housenumbers);
+		HousenumberCollection list_housenumbers = hnrreader.ReadListFromDB(evaluation);
+		HousenumberCollection osm_housenumbers = osmreader.ReadDataFromOverpass(evaluation, relationsid);
+		HousenumberCollection evaluated_housenumbers = list_housenumbers.merge(osm_housenumbers);
 		evaluated_housenumbers.printhtml("test.html");
 		System.out.println("Number of housenumberlist entries after load of official housenumber list: "
 			+ evaluation.housenumberlist.length() + "   " + evaluation.housenumberlist.count_unchanged());
+
+		HousenumberServerAPI hnrserver = new HousenumberServerAPI();
+		int lfdnr = 0;
+		//while(1==1) {
+			lfdnr++;
+			System.out.println("upload Nr. " + lfdnr);
+			hnrserver.writeEvaluationToServer(evaluation, evaluated_housenumbers);
+		//}
 	}
 }

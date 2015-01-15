@@ -32,7 +32,7 @@ import java.util.TreeMap;
 
 
 
-public class HousenumberCache {
+public class HousenumberCollection {
 	TreeMap<String,Housenumber> cache = new TreeMap<String,Housenumber>(); 
 	public boolean debug = false;
 	public int cache_count = 0;
@@ -175,8 +175,8 @@ public class HousenumberCache {
 	}
 	
 
-	public HousenumberCache merge(HousenumberCache osmhousenumbers) {
-		HousenumberCache mergedhousenumbers = new HousenumberCache();
+	public HousenumberCollection merge(HousenumberCollection osmhousenumbers) {
+		HousenumberCollection mergedhousenumbers = new HousenumberCollection();
 
 		System.out.println("at start of merge ...");
 		System.out.println("   count list housenumbers: " + cache.size());
@@ -245,6 +245,52 @@ public class HousenumberCache {
 		}
 		if(debug_output) System.out.println("end of .update of class Workcache ...");
 	}
+
+	
+	/** 
+	 * 
+	 * @param fieldseparator one or more characters to separate the fields from each other. Defaults to Tabulator character
+	 * @param includeHeaderline if set to true, a header will be place in first line
+	 *
+	 */
+	public String toString(String fieldseparator, boolean includeHeaderline) {
+		if(fieldseparator.equals(""))
+			fieldseparator = "\t";
+
+		StringBuffer outputbuffer = new StringBuffer();
+
+		String actrecord = "";
+
+		if(includeHeaderline) {
+			actrecord = "#Strasse" + fieldseparator
+					+	"Hausnummer" + fieldseparator
+					+	"Treffertyp" + fieldseparator
+					+	"OSMId" + fieldseparator
+					+	"OSMTyp" + fieldseparator
+					+	"OSMTag" + fieldseparator
+					+	"OSMTagPrio" + fieldseparator
+					+	"LonLat" + fieldseparator;
+			outputbuffer.append(actrecord + "\n");
+		}
+		
+		for (Map.Entry<String,Housenumber> entry : cache.entrySet()) {
+			String thiskey = entry.getKey();
+			Housenumber housenumber = entry.getValue();
+
+			actrecord = housenumber.getStrasse() + fieldseparator
+				+	housenumber.getHausnummer() + fieldseparator
+				+	housenumber.getTreffertypText() + fieldseparator
+				+	housenumber.getOsmId() + fieldseparator
+				+	housenumber.getOsmObjektart() + fieldseparator
+				+	housenumber.getOsmTag() + fieldseparator
+				+	housenumber.get_osm_tag_prio() + fieldseparator
+				+	housenumber.getLonlat() + fieldseparator;
+			outputbuffer.append(actrecord + "\n");
+		}
+		
+		return outputbuffer.toString();
+	}
+	
 
 
 	public void printhtml(String filename) {

@@ -4,6 +4,7 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.net.HttpURLConnection;
@@ -23,6 +24,7 @@ import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.zip.GZIPInputStream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -102,12 +104,12 @@ public class OsmDataReader {
 	}
 
 
-	public HousenumberCache ReadDataFromOverpass(final Evaluation evaluation, Integer relationsid) {
+	public HousenumberCollection ReadDataFromOverpass(final Evaluation evaluation, Integer relationsid) {
 		URL                url; 
 		URLConnection      urlConn; 
 		BufferedReader     dis;
 
-		final HousenumberCache housenumbers = new HousenumberCache();
+		final HousenumberCollection housenumbers = new HousenumberCollection();
 		
 		String overpass_url = "http://overpass-api.de";
 		String overpass_queryurl = "/api/interpreter?data=";
@@ -140,15 +142,11 @@ public class OsmDataReader {
 			urlConn.setDoInput(true); 
 			urlConn.setUseCaches(false);
 			urlConn.setRequestProperty("User-Agent", "regio-osm.de Housenumber Evaluation, contact: strassenliste@diesei.de");
-//			urlConn.setRequestProperty("Accept-Encoding", "gzip, compress");
+			urlConn.setRequestProperty("Accept-Encoding", "gzip, compress");
 			
 			String inputline = "";
-			dis = new BufferedReader(new InputStreamReader(urlConn.getInputStream(),"UTF-8"));
-			while ((inputline = dis.readLine()) != null)
-			{ 
-				osmresultcontent.append(inputline + "\n");
-			} 
-			
+			InputStream overpassResponse = urlConn.getInputStream(); 
+
 			Integer headeri = 1;
 			System.out.println("Header-Fields Ausgabe ...");
 			String responseContentEncoding = "";
@@ -160,18 +158,22 @@ public class OsmDataReader {
 					responseContentEncoding = urlConn.getHeaderField(headeri);
 				headeri++;
 			}
-			dis.close();
-			
-				// ok, osm result is in osmresultcontent.toString() available
-			System.out.println("Dateilänge url Datenempfang: " + osmresultcontent.toString().length());
-			System.out.println("Dateioutput ===" + osmresultcontent.toString() + "===");
-
 
 			if(responseContentEncoding.equals("gzip")) {
-				//http://www.mkyong.com/java/how-to-decompress-files-from-a-zip-file/			
-				//unzip(osmresultcontent.toString());
+				dis = new BufferedReader(new InputStreamReader(new GZIPInputStream(overpassResponse),"UTF-8"));
+			} else {
+				dis = new BufferedReader(new InputStreamReader(overpassResponse,"UTF-8"));
 			}
-			
+			while ((inputline = dis.readLine()) != null)
+			{ 
+				osmresultcontent.append(inputline + "\n");
+			}
+			dis.close();
+
+				// ok, osm result is in osmresultcontent.toString() available
+			System.out.println("Dateilänge url Datenempfang: " + osmresultcontent.toString().length());
+			//System.out.println("Dateioutput ===" + osmresultcontent.toString() + "===");
+
 			Sink sinkImplementation = new Sink() {
 
 				@Override
@@ -496,8 +498,8 @@ if(memberi > 0)
 	}
 
 
-	public HousenumberCache ReadListFromDB(Evaluation evaluation) {
-		final HousenumberCache housenumbers = new HousenumberCache();
+	public HousenumberCollection ReadListFromDB(Evaluation evaluation) {
+		final HousenumberCollection housenumbers = new HousenumberCollection();
 
 
 		if(		(dbconnection.equals("")) 
