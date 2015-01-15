@@ -34,9 +34,9 @@ public class Applicationconfiguration {
 	
 	public Applicationconfiguration () {
 			// get some configuration infos
-		String configuration_filename = "housenumberclient.properties";		
+		String configuration_filename = "housenumberclient.properties";
 
-		try {
+	try {
 			Reader reader = new FileReader( configuration_filename );
 			Properties prop = new Properties();
 			prop.load( reader );

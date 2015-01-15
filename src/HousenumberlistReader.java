@@ -31,8 +31,8 @@ public class HousenumberlistReader {
 	}
 
 
-	public HousenumberCache ReadListFromDB(Evaluation evaluation) {
-		final HousenumberCache housenumbers = new HousenumberCache();
+	public HousenumberCollection ReadListFromDB(Evaluation evaluation) {
+		final HousenumberCollection housenumbers = new HousenumberCollection();
 
 		if(		(dbconnection.equals("")) 
 			||	(dbusername.equals(""))
