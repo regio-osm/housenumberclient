@@ -17,6 +17,7 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.TreeMap;
@@ -101,6 +102,33 @@ public class OsmDataReader {
 		this.dbconnection = dbconnection;
 		this.dbusername = dbusername;
 		this.dbpassword = dbpassword;
+	}
+
+
+	private static String[] Hausnummernbereich_aufloesen(String hausnummertext) {
+		List<String>	hausnummern_array = new ArrayList<String>();
+
+		if(hausnummertext.indexOf("-") == -1) {
+			hausnummern_array.add(hausnummertext);
+		} else {
+			try {
+				Integer bindestrich_pos = hausnummertext.indexOf("-");
+//TODO parseInt fails for 28d for example
+				Integer hausnummer_start_int = Integer.parseInt(hausnummertext.substring(0,bindestrich_pos).trim());
+				Integer hausnummer_ende_int = Integer.parseInt(hausnummertext.substring(bindestrich_pos+1).trim());
+				if(hausnummer_ende_int > hausnummer_start_int) {
+					for(Integer hausnummerindex=hausnummer_start_int; hausnummerindex <= hausnummer_ende_int; hausnummerindex+=2)
+						hausnummern_array.add(hausnummerindex.toString());
+				}
+			} catch( NumberFormatException e) {
+				System.out.println("Error during parsing text to integer, text was ==="+hausnummertext+"===");
+				e.printStackTrace();
+			}
+
+		}
+		String[] return_string_array = new String[hausnummern_array.size()];
+		return_string_array = hausnummern_array.toArray(return_string_array);
+		return return_string_array;
 	}
 
 
@@ -209,13 +237,22 @@ public class OsmDataReader {
 							osmhousenumber.setStrasse(address_street);
 							osmhousenumber.set_osm_tag(keyvalues);
 							osmhousenumber.setOSMObjekt("node", objectid);
-							osmhousenumber.setHausnummer(address_housenumber);
 							String objectlonlat = nodemap.getValue().getLongitude() + " " + nodemap.getValue().getLatitude();
 							osmhousenumber.setLonlat(objectlonlat);
 							osmhousenumber.setLonlat_source("OSM");
 							osmhousenumber.setTreffertyp(Housenumber.Treffertyp.OSM_ONLY);
-
-							housenumbers.add_newentry(osmhousenumber);
+							
+							if(address_housenumber.indexOf(",") != -1)
+								address_housenumber = address_housenumber.replace(",",";");
+							String[] addressHousenumberParts = address_housenumber.split(";");
+							for(int tempi = 0; tempi < addressHousenumberParts.length; tempi++) {
+								String actSingleHousenumber = addressHousenumberParts[tempi].trim();
+								String[] temp_akthausnummer_single_array = Hausnummernbereich_aufloesen(actSingleHousenumber);
+								for(String tempsinglei: temp_akthausnummer_single_array) {
+									osmhousenumber.setHausnummer(tempsinglei);
+									housenumbers.add_newentry(osmhousenumber);
+								}
+							}
 						}
 	    			}
 
@@ -254,7 +291,17 @@ public class OsmDataReader {
 							osmhousenumber.setLonlat_source("OSM");
 							osmhousenumber.setTreffertyp(Housenumber.Treffertyp.OSM_ONLY);
 
-							housenumbers.add_newentry(osmhousenumber);
+							if(address_housenumber.indexOf(",") != -1)
+								address_housenumber = address_housenumber.replace(",",";");
+							String[] addressHousenumberParts = address_housenumber.split(";");
+							for(int tempi = 0; tempi < addressHousenumberParts.length; tempi++) {
+								String actSingleHousenumber = addressHousenumberParts[tempi].trim();
+								String[] temp_akthausnummer_single_array = Hausnummernbereich_aufloesen(actSingleHousenumber);
+								for(String tempsinglei: temp_akthausnummer_single_array) {
+									osmhousenumber.setHausnummer(tempsinglei);
+									housenumbers.add_newentry(osmhousenumber);
+								}
+							}
 						}
 	    			}
 		
@@ -285,7 +332,17 @@ public class OsmDataReader {
 							osmhousenumber.setLonlat_source("OSM");
 							osmhousenumber.setTreffertyp(Housenumber.Treffertyp.OSM_ONLY);
 
-							housenumbers.add_newentry(osmhousenumber);
+							if(address_housenumber.indexOf(",") != -1)
+								address_housenumber = address_housenumber.replace(",",";");
+							String[] addressHousenumberParts = address_housenumber.split(";");
+							for(int tempi = 0; tempi < addressHousenumberParts.length; tempi++) {
+								String actSingleHousenumber = addressHousenumberParts[tempi].trim();
+								String[] temp_akthausnummer_single_array = Hausnummernbereich_aufloesen(actSingleHousenumber);
+								for(String tempsinglei: temp_akthausnummer_single_array) {
+									osmhousenumber.setHausnummer(tempsinglei);
+									housenumbers.add_newentry(osmhousenumber);
+								}
+							}
 						}
 	    			}
 				}
