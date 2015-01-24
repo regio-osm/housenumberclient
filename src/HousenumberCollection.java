@@ -253,7 +253,7 @@ public class HousenumberCollection {
 	 * @param includeHeaderline if set to true, a header will be place in first line
 	 *
 	 */
-	public String toString(String fieldseparator, boolean includeHeaderline) {
+	public String toString(Evaluation evaluation, String fieldseparator, boolean includeHeaderline) {
 		if(fieldseparator.equals(""))
 			fieldseparator = "\t";
 
@@ -272,6 +272,12 @@ public class HousenumberCollection {
 					+	"LonLat" + fieldseparator;
 			outputbuffer.append(actrecord + "\n");
 		}
+
+		outputbuffer.append("#Para Country=" + evaluation.getCountry() + "\n");
+		outputbuffer.append("#Para Municipality=" + evaluation.getMunicipality() + "\n");
+		outputbuffer.append("#Para Jobname=" + evaluation.getJobname() + "\n");
+		outputbuffer.append("#Para OSMTime=" + evaluation.osmtime + "\n");
+		outputbuffer.append("#Para EvaluationTime=" + evaluation.evaluationtime + "\n");
 		
 		for (Map.Entry<String,Housenumber> entry : cache.entrySet()) {
 			String thiskey = entry.getKey();

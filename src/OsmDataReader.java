@@ -132,7 +132,7 @@ public class OsmDataReader {
 	}
 
 
-	public HousenumberCollection ReadDataFromOverpass(final Evaluation evaluation, Integer relationsid) {
+	public HousenumberCollection ReadDataFromOverpass(final Evaluation evaluation, Long relationsid) {
 		URL                url; 
 		URLConnection      urlConn; 
 		BufferedReader     dis;

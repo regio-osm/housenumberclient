@@ -3,9 +3,6 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
 
 
 
@@ -101,7 +98,8 @@ public class HousenumberlistReader {
 //			for(int loadindex=0; loadindex < evaluation.housenumberlist.length(); loadindex++) {
 //				Workcache_Entry aktcacheentry = evaluation.housenumberlist.entry(loadindex);
 //			}
-	
+			stmtqueryofficialhousenumbers.close();
+			conhousenumberdb.close();
 		
 		} catch (SQLException e) {
 			System.out.println("ERROR: during select table auswertung_hausnummern, sqlquery was ===" 
