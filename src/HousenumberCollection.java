@@ -33,13 +33,16 @@ import java.util.TreeMap;
 
 
 public class HousenumberCollection {
-	TreeMap<String,Housenumber> cache = new TreeMap<String,Housenumber>(); 
+	public TreeMap<String,Housenumber> cache = new TreeMap<String,Housenumber>(); 
 	public boolean debug = false;
-	public int cache_count = 0;
+	public String land = "";
+	public String stadt = "";
+	public String jobname = "";
+	public String polygonAsString = "";
+	public int adminLevel = 0;
+	private int cache_count = 0;
 	private boolean housenumberadditionCaseSentity = true;
-	String land = "";
-	String stadt = "";
-	String jobname = "";
+	
 	
 	
 	private void workcache_debug(String outputtext) {
@@ -188,7 +191,6 @@ public class HousenumberCollection {
 			Housenumber newhousenumber = listhousenumber;
 			if(osmhousenumbers.cache.containsKey(thiskey)) {
 				Housenumber foundosmhousenumber = osmhousenumbers.cache.get(thiskey);
-//				private long 	id = -1L;
 				newhousenumber.setTreffertyp(Housenumber.Treffertyp.IDENTICAL);
 				newhousenumber.set_osm_tag_rawvalues(foundosmhousenumber);
 				newhousenumber.setOSMObjekt(foundosmhousenumber.getOsmObjektart(), foundosmhousenumber.getOsmId());
@@ -253,7 +255,7 @@ public class HousenumberCollection {
 	 * @param includeHeaderline if set to true, a header will be place in first line
 	 *
 	 */
-	public String toString(String fieldseparator, boolean includeHeaderline) {
+	public String toString(Evaluation evaluation, String fieldseparator, boolean includeHeaderline) {
 		if(fieldseparator.equals(""))
 			fieldseparator = "\t";
 
@@ -272,6 +274,12 @@ public class HousenumberCollection {
 					+	"LonLat" + fieldseparator;
 			outputbuffer.append(actrecord + "\n");
 		}
+
+		outputbuffer.append("#Para Country=" + evaluation.getCountry() + "\n");
+		outputbuffer.append("#Para Municipality=" + evaluation.getMunicipality() + "\n");
+		outputbuffer.append("#Para Jobname=" + evaluation.getJobname() + "\n");
+		outputbuffer.append("#Para OSMTime=" + evaluation.osmtime + "\n");
+		outputbuffer.append("#Para EvaluationTime=" + evaluation.evaluationtime + "\n");
 		
 		for (Map.Entry<String,Housenumber> entry : cache.entrySet()) {
 			String thiskey = entry.getKey();
