@@ -37,7 +37,7 @@ public class HousenumberServerAPI {
 	private String serverUrl = "http://localhost:8080"; //     /housenumberserverJavaServlet/Upload
 //TODO configuration
 
-	public List<Job> findJobs(String country, String municipality, String officialkeys_id) {
+	public List<Job> findJobs(String country, String municipality, String jobname, String officialkeys_id) {
 		List<Job> foundjobs = new ArrayList<Job>();
 
 		java.util.Date sendToServerStarttime = new java.util.Date();
@@ -63,6 +63,10 @@ public class HousenumberServerAPI {
 			    temptoutput.append("Content-Disposition: form-data; name=\"municipality\"" + "\r\n");
 			    temptoutput.append("\r\n");
 			    temptoutput.append(municipality + "\r\n");
+			    temptoutput.append("--" + boundary + "\r\n");
+			    temptoutput.append("Content-Disposition: form-data; name=\"jobname\"" + "\r\n");
+			    temptoutput.append("\r\n");
+			    temptoutput.append(jobname + "\r\n");
 			    temptoutput.append("--" + boundary + "\r\n");
 			    temptoutput.append("Content-Disposition: form-data; name=\"officialkeys\"" + "\r\n");
 			    temptoutput.append("\r\n");
@@ -102,7 +106,7 @@ public class HousenumberServerAPI {
 					continue;
 				String linecolumns[] = fileline.split("\t");
 				
-				Job actjob = new Job(linecolumns[0], linecolumns[1], linecolumns[2], Long.parseLong(linecolumns[3]));
+				Job actjob = new Job(linecolumns[0], linecolumns[1], linecolumns[2], linecolumns[3], Long.parseLong(linecolumns[4]));
 				foundjobs.add(actjob);
 			}
 			writer.close();

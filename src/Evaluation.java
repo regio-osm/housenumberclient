@@ -16,6 +16,7 @@ public class Evaluation {
 	private String country = "";
 	private String municipality = "";
 	private String jobname = "";
+	private String subid = "";
 	public Long evaluationtime = 0L;
 	public Long osmtime = 0L;
 	public HousenumberCollection housenumberlist = new HousenumberCollection();
@@ -41,6 +42,9 @@ public class Evaluation {
 		return this.jobname;
 	}
 
+	public String getSubid() {
+		return this.subid;
+	}
 
 	public HousenumberCollection getHousenumberlist() {
 		return this.housenumberlist;
@@ -73,6 +77,19 @@ public class Evaluation {
 		this.jobname = jobname;
 	}
 
+
+	/**
+	 * copy complete job data into evaluation structure
+	 * @param job
+	 */
+	public void setJobData(Job job) {
+		this.country = job.country;
+		this.municipality = job.municipality;
+		this.jobname = job.jobname;
+		this.subid = job.subid;
+	}
+
+	
 	/**
 	 * set unique name of municipality, for which the evaluation should be run
 	 * @param country
@@ -117,7 +134,13 @@ public class Evaluation {
 		Evaluation evaluation = new Evaluation();
 		HousenumberServerAPI hnrserver = new HousenumberServerAPI();
 
-		List<Job> jobs = hnrserver.findJobs("Poland","*", "14*");
+		HousenumberCollection list_housenumbers = new HousenumberCollection();
+		HousenumberCollection osm_housenumbers = new HousenumberCollection();
+		HousenumberCollection evaluated_housenumbers = new HousenumberCollection();
+		
+		//List<Job> jobs = hnrserver.findJobs("Poland","*", "04*");
+		//List<Job> jobs = hnrserver.findJobs("Schweiz","Zürich", "*", "*");
+		List<Job> jobs = hnrserver.findJobs("Bundesrepublik Deutschland","Berlin", "*", "*");
 
 
 		//Integer relationsid = 2597485;
@@ -128,7 +151,7 @@ public class Evaluation {
 		String municipality = "Górowo Iławeckie";
 		String jobname = municipality;
 */
-boolean skipping = true;
+boolean skipping = false;
 		for(int jobindex = 0; jobindex < jobs.size(); jobindex++) {
 
 			Job actjob = jobs.get(jobindex);
@@ -138,28 +161,34 @@ boolean skipping = true;
 			String municipality = actjob.municipality;
 			String jobname = actjob.jobname;
 		
-			if(jobname.equals("gmina Wolanów"))
-				skipping = false;
-//			if(relationid == 2708018)
+//			if(municipality.equals("Boniewo"))
 //				skipping = false;
+			if(jobname.equals("gmina Grudziądz"))
+				skipping = false;
+			if(relationid == 2555214)
+				skipping = false;
 			if(skipping)
 				continue;
 
-			evaluation.setMunicipalityAndJobname(country, municipality, jobname);
+			//evaluation.setMunicipalityAndJobname(country, municipality, jobname);
+			evaluation.setJobData(actjob);
 
 			evaluation.setHousenumberAdditionCaseSensity(false);
 			System.out.println("Number of housenumberlist entries at start: " + evaluation.housenumberlist.length());
 
 			java.util.Date dbloadstart = new java.util.Date();
-			HousenumberCollection list_housenumbers = hnrreader.ReadListFromDB(evaluation);
+			list_housenumbers.clear();
+			list_housenumbers = hnrreader.ReadListFromDB(evaluation);
 			java.util.Date dbloadend = new java.util.Date();
 			java.util.Date overpassloadstart = new java.util.Date();
-			HousenumberCollection osm_housenumbers = osmreader.ReadDataFromOverpass(evaluation, relationid);
+			osm_housenumbers.clear();
+			osm_housenumbers = osmreader.ReadDataFromOverpass(evaluation, relationid);
 			evaluation.osmtime = overpassloadstart.getTime() - 5 * MINUTES_IN_MILLISECONDS;
 			evaluation.evaluationtime = overpassloadstart.getTime();
 			java.util.Date overpassloadend = new java.util.Date();
 			java.util.Date mergedatastart = new java.util.Date();
-			HousenumberCollection evaluated_housenumbers = list_housenumbers.merge(osm_housenumbers);
+			evaluated_housenumbers.clear();
+			evaluated_housenumbers = list_housenumbers.merge(osm_housenumbers);
 			java.util.Date mergedataend = new java.util.Date();
 			evaluated_housenumbers.printhtml("test.html");
 			System.out.println("Number of housenumberlist entries after load of official housenumber list: "

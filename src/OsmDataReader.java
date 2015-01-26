@@ -2,22 +2,28 @@ import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.TreeMap;
@@ -78,24 +84,24 @@ public class OsmDataReader {
 	String dbpassword = "";
 
 	
-	static Integer nodes_count = 0;
-	static Integer ways_count = 0;
-	static Integer relations_count = 0;
-	static IdTracker availableNodes = IdTrackerFactory.createInstance(IdTrackerType.Dynamic);
-	static IdTracker availableWays = IdTrackerFactory.createInstance(IdTrackerType.Dynamic);
-	static IdTracker availableRelations = IdTrackerFactory.createInstance(IdTrackerType.Dynamic);
-	static SimpleObjectStore<EntityContainer> allNodes = new SimpleObjectStore<EntityContainer>(new SingleClassObjectSerializationFactory(EntityContainer.class), "afnd", true);
-	static SimpleObjectStore<EntityContainer> allWays = new SimpleObjectStore<EntityContainer>(new SingleClassObjectSerializationFactory(EntityContainer.class), "afwy", true);
-	static SimpleObjectStore<EntityContainer> allRelations = new SimpleObjectStore<EntityContainer>(new SingleClassObjectSerializationFactory(EntityContainer.class), "afrl", true);
+	Integer nodes_count = 0;
+	Integer ways_count = 0;
+	Integer relations_count = 0;
+	IdTracker availableNodes = IdTrackerFactory.createInstance(IdTrackerType.Dynamic);
+	IdTracker availableWays = IdTrackerFactory.createInstance(IdTrackerType.Dynamic);
+	IdTracker availableRelations = IdTrackerFactory.createInstance(IdTrackerType.Dynamic);
+	SimpleObjectStore<EntityContainer> allNodes = new SimpleObjectStore<EntityContainer>(new SingleClassObjectSerializationFactory(EntityContainer.class), "afnd", true);
+	SimpleObjectStore<EntityContainer> allWays = new SimpleObjectStore<EntityContainer>(new SingleClassObjectSerializationFactory(EntityContainer.class), "afwy", true);
+	SimpleObjectStore<EntityContainer> allRelations = new SimpleObjectStore<EntityContainer>(new SingleClassObjectSerializationFactory(EntityContainer.class), "afrl", true);
 
 	
-	static TreeMap<Long, Node> gibmirnodes = new TreeMap<Long, Node>();
-	static TreeMap<Long, Way> gibmirways = new TreeMap<Long, Way>();
-	static TreeMap<Long, Relation> gibmirrelations = new TreeMap<Long, Relation>();
+	TreeMap<Long, Node> gibmirnodes = new TreeMap<Long, Node>();
+	TreeMap<Long, Way> gibmirways = new TreeMap<Long, Way>();
+	TreeMap<Long, Relation> gibmirrelations = new TreeMap<Long, Relation>();
 
-	static String land = "";
-	static Integer land_id = -1;
-	static Integer stadt_id = -1;
+	String land = "";
+	Integer land_id = -1;
+	Integer stadt_id = -1;
 
 	
 	public void setDBConnection(String dbconnection, String dbusername, String dbpassword) {
@@ -138,6 +144,14 @@ public class OsmDataReader {
 		BufferedReader     dis;
 
 		final HousenumberCollection housenumbers = new HousenumberCollection();
+
+		nodes_count = 0;
+		ways_count = 0;
+		relations_count = 0;
+		gibmirnodes.clear();
+		gibmirways.clear();
+		gibmirrelations.clear();
+		
 		
 		String overpass_url = "http://overpass-api.de";
 		String overpass_queryurl = "/api/interpreter?data=";
@@ -169,7 +183,7 @@ public class OsmDataReader {
 			urlConn = url.openConnection(); 
 			urlConn.setDoInput(true); 
 			urlConn.setUseCaches(false);
-			urlConn.setRequestProperty("User-Agent", "regio-osm.de Housenumber Evaluation, contact: strassenliste@diesei.de");
+			urlConn.setRequestProperty("User-Agent", "regio-osm.de Housenumber Evaluation Client, contact: strassenliste@diesei.de");
 			urlConn.setRequestProperty("Accept-Encoding", "gzip, compress");
 			
 			String inputline = "";
@@ -198,6 +212,20 @@ public class OsmDataReader {
 			}
 			dis.close();
 
+			
+				// first, save upload data as local file, just for checking or for history
+			DateFormat time_formatter = new SimpleDateFormat("yyyyMMdd-HHmmssZ");
+			String downloadtime = time_formatter.format(new Date());
+			
+			String filename = "overpassdownload" + "/" + downloadtime + ".osm";
+			System.out.println("overpassdownloaddatei ===" + filename + "===");
+
+			File outputfile = new File(filename);
+			PrintWriter osmOutput = new PrintWriter(new BufferedWriter(new OutputStreamWriter(
+					new FileOutputStream(filename),StandardCharsets.UTF_8)));
+			osmOutput.println(osmresultcontent.toString());
+			osmOutput.close();
+			
 				// ok, osm result is in osmresultcontent.toString() available
 			System.out.println("Dateilänge url Datenempfang: " + osmresultcontent.toString().length());
 			//System.out.println("Dateioutput ===" + osmresultcontent.toString() + "===");

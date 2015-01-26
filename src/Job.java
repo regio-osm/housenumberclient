@@ -27,19 +27,22 @@ public class Job {
 	public String country = "";
 	public String municipality = "";
 	public String jobname = "";
+	public String subid = "";
 	public Long osmrelationid = 0L;
 
 	public Job() {
 		this.country = "";
 		this.municipality = "";
 		this.jobname = "";
+		this.subid = "";
 		this.osmrelationid = 0L;
 	}
 
-	public Job(String country, String municipality, String jobname, Long relationid) {
+	public Job(String country, String municipality, String jobname, String subid, Long relationid) {
 		this.country = country;
 		this.municipality = municipality;
 		this.jobname = jobname;
+		this.subid = subid;
 		this.osmrelationid = relationid;
 	}
 
