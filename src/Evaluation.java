@@ -138,9 +138,9 @@ public class Evaluation {
 		HousenumberCollection osm_housenumbers = new HousenumberCollection();
 		HousenumberCollection evaluated_housenumbers = new HousenumberCollection();
 		
-		//List<Job> jobs = hnrserver.findJobs("Poland","*", "04*");
+		List<Job> jobs = hnrserver.findJobs("Poland","*", "*", "24*");
 		//List<Job> jobs = hnrserver.findJobs("Schweiz","Zürich", "*", "*");
-		List<Job> jobs = hnrserver.findJobs("Bundesrepublik Deutschland","Berlin", "*", "*");
+		//List<Job> jobs = hnrserver.findJobs("Bundesrepublik Deutschland","Berlin", "*", "*");
 
 
 		//Integer relationsid = 2597485;

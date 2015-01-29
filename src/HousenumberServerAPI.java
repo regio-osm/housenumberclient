@@ -44,9 +44,9 @@ public class HousenumberServerAPI {
 
 		try {
 			String url_string = serverUrl + "/housenumberserverAPI/findjobs";
-	
+
 			String boundary = Long.toHexString(System.currentTimeMillis()); // Just generate some unique random value.
-	
+
 			URLConnection connection = new URL(url_string).openConnection();
 			connection.setDoOutput(true); // This sets request method to POST.
 			connection.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
@@ -111,7 +111,7 @@ public class HousenumberServerAPI {
 			}
 			writer.close();
 			reader.close();
-		
+
 		}							
 		catch (MalformedURLException mue) {
 			System.out.println("ERROR: MalformedURLException, Details ...");
