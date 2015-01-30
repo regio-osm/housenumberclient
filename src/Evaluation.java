@@ -15,6 +15,8 @@ public class Evaluation {
 	private final static long MINUTES_IN_MILLISECONDS = 60 * 1000;
 	private String country = "";
 	private String municipality = "";
+	private String officialkeysId = "";
+	private Integer adminLevel = 0;
 	private String jobname = "";
 	private String subid = "";
 	public Long evaluationtime = 0L;
@@ -25,6 +27,8 @@ public class Evaluation {
 	public void initialize() {
 		country = "";
 		municipality = "";
+		officialkeysId = "";
+		adminLevel = 0;
 		jobname = "";
 		housenumberlist.clear();
 	}
@@ -37,7 +41,14 @@ public class Evaluation {
 		return this.municipality;
 	}
 	
+	public String getOfficialkeysId() {
+		return this.officialkeysId;
+	}
 	
+	public Integer getAdminLevel() {
+		return this.adminLevel;
+	}
+
 	public String getJobname() {
 		return this.jobname;
 	}
@@ -79,12 +90,23 @@ public class Evaluation {
 
 
 	/**
+	 * set unique name of municipality, for which the evaluation should be run
+	 * @param country
+	 * @param municipality
+	 */
+	public void setOfficialkeysId(String officialkeysId) {
+		this.officialkeysId = officialkeysId;
+	}
+	
+	/**
 	 * copy complete job data into evaluation structure
 	 * @param job
 	 */
 	public void setJobData(Job job) {
 		this.country = job.country;
 		this.municipality = job.municipality;
+		this.officialkeysId = job.officialkeysId;
+		this.adminLevel = job.adminLevel;
 		this.jobname = job.jobname;
 		this.subid = job.subid;
 	}
@@ -138,7 +160,8 @@ public class Evaluation {
 		HousenumberCollection osm_housenumbers = new HousenumberCollection();
 		HousenumberCollection evaluated_housenumbers = new HousenumberCollection();
 		
-		List<Job> jobs = hnrserver.findJobs("Poland","*", "*", "24*");
+		List<Job> jobs = hnrserver.getMissingCountryJobs("Poland");
+		//List<Job> jobs = hnrserver.findJobs("Poland","*", "*", "32*");
 		//List<Job> jobs = hnrserver.findJobs("Schweiz","Zürich", "*", "*");
 		//List<Job> jobs = hnrserver.findJobs("Bundesrepublik Deutschland","Berlin", "*", "*");
 

@@ -2,6 +2,7 @@ import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
@@ -106,7 +107,8 @@ public class HousenumberServerAPI {
 					continue;
 				String linecolumns[] = fileline.split("\t");
 				
-				Job actjob = new Job(linecolumns[0], linecolumns[1], linecolumns[2], linecolumns[3], Long.parseLong(linecolumns[4]));
+				Job actjob = new Job(linecolumns[0], linecolumns[1], linecolumns[2], 
+					Integer.parseInt(linecolumns[3]), linecolumns[4], linecolumns[5], Long.parseLong(linecolumns[5]));
 				foundjobs.add(actjob);
 			}
 			writer.close();
@@ -127,6 +129,96 @@ public class HousenumberServerAPI {
 		
 		return foundjobs;
 	}
+
+		/**
+		 * get a list of jobs, which evaluations in a country are still missing until the country is completely evaluated
+		 * 
+		 * @param country
+		 * @return  List of Evaluation Jobs
+		 */
+	public List<Job> getMissingCountryJobs(String country) {
+		List<Job> foundjobs = new ArrayList<Job>();
+	
+		java.util.Date sendToServerStarttime = new java.util.Date();
+	
+		try {
+			String url_string = serverUrl + "/housenumberserverAPI/getMissingCountryJobs";
+	
+			String boundary = Long.toHexString(System.currentTimeMillis()); // Just generate some unique random value.
+	
+			URLConnection connection = new URL(url_string).openConnection();
+			connection.setDoOutput(true); // This sets request method to POST.
+			connection.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
+			PrintWriter writer = null;
+			try {
+			    writer = new PrintWriter(new OutputStreamWriter(connection.getOutputStream(), "UTF-8"));
+			    StringBuffer temptoutput = new StringBuffer();
+			    	// please note, that all \r\n are necessary. \n is not enough 
+			    temptoutput.append("--" + boundary + "\r\n");
+			    temptoutput.append("Content-Disposition: form-data; name=\"country\"" + "\r\n");
+			    temptoutput.append("\r\n");
+			    temptoutput.append(country + "\r\n");
+			    temptoutput.append("--" + boundary + "--" + "\r\n");
+			    int laststartpos = (temptoutput.toString().length() > 8000) ? 8000: temptoutput.toString().length();
+			    int firstendpos = (temptoutput.toString().length() > 1000) ? temptoutput.toString().length() - 1000 : 0;
+			    System.out.println("Upload-Request Start ===\n" + temptoutput.toString().substring(0, laststartpos) + "\n===");
+			    System.out.println("Upload-Request Ende ===\n" + temptoutput.toString().substring(firstendpos, temptoutput.toString().length()) + "\n===");
+			    writer.println(temptoutput.toString());
+			} finally {
+			    if (writer != null) writer.close();
+			}
+	
+			// Connection is lazily executed whenever you request any status.
+			int responseCode = ((HttpURLConnection) connection).getResponseCode();
+			System.out.println(responseCode); // Should be 200
+				// ===================================================================================================================
+	
+	
+			Integer headeri = 1;
+			System.out.println("Header-Fields Ausgabe ...");
+			while(((HttpURLConnection) connection).getHeaderFieldKey(headeri) != null) {
+				System.out.println("  Header # "+headeri+":  ["+((HttpURLConnection) connection).getHeaderFieldKey(headeri)+"] ==="+((HttpURLConnection) connection).getHeaderField(headeri)+"===");
+				headeri++;
+			}
+	
+			java.util.Date sendToServerEndtime = new java.util.Date();
+			System.out.println("Duration for wating to Server response after upload result content in ms: " + (sendToServerEndtime.getTime() - sendToServerStarttime.getTime()));
+			
+			BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream(),java.nio.charset.Charset.forName("UTF-8")));
+					// just for simulating server response with local file
+					//String dateipfadname = "/home/openstreetmap/temp/uploaddata/temp/test.txt";
+					//BufferedReader reader = new BufferedReader(new FileReader(dateipfadname));
+			System.out.println("getcontentencoding ===" + connection.getContentEncoding() + "===");
+			String fileline = "";
+			while((fileline = reader.readLine()) != null) {
+				System.out.println(fileline);
+				if(fileline.equals(""))
+					continue;
+				String linecolumns[] = fileline.split("\t");
+
+				Job actjob = new Job(linecolumns[0], linecolumns[1], linecolumns[2], 
+						Integer.parseInt(linecolumns[3]), linecolumns[4], linecolumns[5], Long.parseLong(linecolumns[5]));
+				foundjobs.add(actjob);
+			}
+			writer.close();
+			reader.close();
+	
+		}							
+		catch (MalformedURLException mue) {
+			System.out.println("ERROR: MalformedURLException, Details ...");
+			mue.printStackTrace();
+			return foundjobs;
+		} 
+		catch (IOException ioe) {
+			System.out.println("ERROR: IOException, Details ...");
+			ioe.printStackTrace();
+			return foundjobs;
+		}
+		return foundjobs;
+	}
+	
+	
+	
 	
 	public boolean writeEvaluationToServer(Evaluation evaluation, HousenumberCollection result) {
 
@@ -176,15 +268,23 @@ public class HousenumberServerAPI {
 			    StringBuffer temptoutput = new StringBuffer();
 			    	// please note, that all \r\n are necessary. \n is not enough 
 			    temptoutput.append("--" + boundary + "\r\n");
-			    temptoutput.append("Content-Disposition: form-data; name=\"country\"" + "\r\n");
+			    temptoutput.append("Content-Disposition: form-data; name=\"Country\"" + "\r\n");
 			    temptoutput.append("\r\n");
 			    temptoutput.append(evaluation.getCountry() + "\r\n");
 			    temptoutput.append("--" + boundary + "\r\n");
-			    temptoutput.append("Content-Disposition: form-data; name=\"municipality\"" + "\r\n");
+			    temptoutput.append("Content-Disposition: form-data; name=\"Municipality\"" + "\r\n");
 			    temptoutput.append("\r\n");
 			    temptoutput.append(evaluation.getMunicipality() + "\r\n");
 			    temptoutput.append("--" + boundary + "\r\n");
-			    temptoutput.append("Content-Disposition: form-data; name=\"jobname\"" + "\r\n");
+			    temptoutput.append("Content-Disposition: form-data; name=\"Officialkeysid\"" + "\r\n");
+			    temptoutput.append("\r\n");
+			    temptoutput.append(evaluation.getOfficialkeysId() + "\r\n");
+			    temptoutput.append("--" + boundary + "\r\n");
+			    temptoutput.append("Content-Disposition: form-data; name=\"Adminlevel\"" + "\r\n");
+			    temptoutput.append("\r\n");
+			    temptoutput.append(evaluation.getAdminLevel() + "\r\n");
+			    temptoutput.append("--" + boundary + "\r\n");
+			    temptoutput.append("Content-Disposition: form-data; name=\"Jobname\"" + "\r\n");
 			    temptoutput.append("\r\n");
 			    temptoutput.append(evaluation.getJobname() + "\r\n");
 			    temptoutput.append("--" + boundary + "\r\n");

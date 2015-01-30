@@ -26,6 +26,8 @@ import java.util.List;
 public class Job {
 	public String country = "";
 	public String municipality = "";
+	public String officialkeysId = "";
+	public Integer adminLevel = 0;
 	public String jobname = "";
 	public String subid = "";
 	public Long osmrelationid = 0L;
@@ -33,14 +35,18 @@ public class Job {
 	public Job() {
 		this.country = "";
 		this.municipality = "";
+		this.officialkeysId = "";
+		this.adminLevel = 0;
 		this.jobname = "";
 		this.subid = "";
 		this.osmrelationid = 0L;
 	}
 
-	public Job(String country, String municipality, String jobname, String subid, Long relationid) {
+	public Job(String country, String municipality, String officialkeysId, Integer adminLevel, String jobname, String subid, Long relationid) {
 		this.country = country;
 		this.municipality = municipality;
+		this.officialkeysId = officialkeysId;
+		this.adminLevel = adminLevel;
 		this.jobname = jobname;
 		this.subid = subid;
 		this.osmrelationid = relationid;
