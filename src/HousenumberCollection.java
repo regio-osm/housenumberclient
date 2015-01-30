@@ -277,6 +277,8 @@ public class HousenumberCollection {
 
 		outputbuffer.append("#Para Country=" + evaluation.getCountry() + "\n");
 		outputbuffer.append("#Para Municipality=" + evaluation.getMunicipality() + "\n");
+		outputbuffer.append("#Para Officialkeysid=" + evaluation.getOfficialkeysId() + "\n");
+		outputbuffer.append("#Para Adminlevel=" + evaluation.getAdminLevel() + "\n");
 		outputbuffer.append("#Para Jobname=" + evaluation.getJobname() + "\n");
 		outputbuffer.append("#Para OSMTime=" + evaluation.osmtime + "\n");
 		outputbuffer.append("#Para EvaluationTime=" + evaluation.evaluationtime + "\n");
