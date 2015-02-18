@@ -1,5 +1,6 @@
 package de.regioosm.housenumbers;
 
+import java.io.File;
 import java.io.FileReader;
 import java.io.Reader;
 import java.util.Properties;
@@ -32,9 +33,9 @@ public class Applicationconfiguration {
 	public Level logging_console_level = Level.FINEST;
 	public Level logging_file_level = Level.FINEST;
 	
-	public Applicationconfiguration () {
+	public Applicationconfiguration (String path) {
 			// get some configuration infos
-		String configuration_filename = "housenumberclient.properties";
+		String configuration_filename =  path + ".." + File.separator + ".." + File.separator + "housenumberclient.properties";
 
 	try {
 			Reader reader = new FileReader( configuration_filename );

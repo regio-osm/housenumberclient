@@ -68,7 +68,7 @@ import java.text.ParseException;
 public class OsmDataReader {
 	private static final int HAUSNUMMERSORTIERBARLENGTH = 4;
 
-	Applicationconfiguration configuration = new Applicationconfiguration();
+	Applicationconfiguration configuration = new Applicationconfiguration("./");
 	
 	String dbconnection = "";
 	String dbusername = "";
