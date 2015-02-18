@@ -67,14 +67,15 @@ public class HousenumberlistReader {
 			if (!evaluation.getCountry().equals("")) {
 				sqlbefehlJobs  += " AND land.land like '"  + evaluation.getCountry() + "'";
 			}
+//TODO preparedStatement
 			if (!evaluation.getMunicipality().equals("")) {
-				sqlbefehlJobs  += " AND stadt.stadt like '"  + evaluation.getMunicipality() + "'";
+				sqlbefehlJobs  += " AND stadt.stadt like '"  + evaluation.getMunicipality().replace("'", "''") + "'";
 			}
 			if (!evaluation.getJobname().equals("")) {
-				sqlbefehlJobs  += " AND gebiete.name like '"  + evaluation.getJobname() + "'";
+				sqlbefehlJobs  += " AND gebiete.name like '"  + evaluation.getJobname().replace("'", "''") + "'";
 			}
 			sqlbefehlJobs  += " ORDER BY land.land, stadt.stadt, jobname;";
-			
+
 			boolean subids_separat = false;
 			Statement queryjobSmt = conHousenumbers.createStatement();
 			ResultSet queryJobRS = queryjobSmt.executeQuery(sqlbefehlJobs);
@@ -95,10 +96,10 @@ public class HousenumberlistReader {
 			sqlqueryofficialhousenumbers  += " land as l";
 			sqlqueryofficialhousenumbers  += " WHERE";
 			if (!evaluation.getMunicipality().equals(evaluation.getJobname()) && subids_separat) {
-				sqlqueryofficialhousenumbers  += " (sub_id = '"  + evaluation.getSubid() + "' OR sub_id = '-1') AND";
+				sqlqueryofficialhousenumbers  += " (sub_id = '"  + evaluation.getSubid().replace("'","''") + "' OR sub_id = '-1') AND";
 			}
 			sqlqueryofficialhousenumbers  += " land = '" + evaluation.getCountry() + "'";
-			sqlqueryofficialhousenumbers  += " AND stadt = '" + evaluation.getMunicipality() + "'";
+			sqlqueryofficialhousenumbers  += " AND stadt = '" + evaluation.getMunicipality().replace("'","''") + "'";
 			sqlqueryofficialhousenumbers  += " AND sh.land_id = l.id";
 			sqlqueryofficialhousenumbers  += " AND sh.stadt_id = s.id";
 			sqlqueryofficialhousenumbers  += " AND sh.strasse_id = str.id";
@@ -106,10 +107,7 @@ public class HousenumberlistReader {
 			Statement queryofficialhousenumbersStmt = conHousenumbers.createStatement();
 			ResultSet rsqueryofficialhousenumbers = queryofficialhousenumbersStmt.executeQuery(sqlqueryofficialhousenumbers);
 	
-			String tempAkthausnummer = "";
 			while (rsqueryofficialhousenumbers.next()) {
-				tempAkthausnummer = rsqueryofficialhousenumbers.getString("hausnummer_sortierbar");
-				tempAkthausnummer = tempAkthausnummer.substring(1, HAUSNUMMERSORTIERBARLENGTH);
 
 				Housenumber newofficialhousenumber = new Housenumber(evaluation.getHousenumberlist().ishousenumberadditionCaseSentity());
 

@@ -148,6 +148,97 @@ public class Evaluation {
 	public static void main(String args[]) {
 		Applicationconfiguration configuration = new Applicationconfiguration();
 
+		java.util.Date programStart = new java.util.Date();
+		
+		for (int lfdnr = 0; lfdnr < args.length; lfdnr++) {
+			System.out.println("args[" + lfdnr + "] ===" + args[lfdnr] + "===");
+		}
+		if ((args.length >= 1) && (args[0].equals("-h"))) {
+			System.out.println("-country countryname -- ('Bundesrepublik Deutschland' or other countries in english version, for exampel 'Netherland'");
+			System.out.println("-adminhierarchy xy -- administrative hierarchy, for example 'Bundesrepublik Deutschland,Bayern'");
+			System.out.println("-municipality muniname -- name of the municipality");
+			System.out.println("-jobname xy -- jobname of the municipality. Name of the muncipality or of a subadmin area, if available in osm and in offizial housenumber list");
+			System.out.println("-officialkeysid id -- official id of the muncipality. In Germany amtlicher Gemeindeschlüssel. Wildcard at the end * possible");
+			System.out.println("-allmissingjobs -- flag, that all missing jobs in a country should be run (default: only as specified in other parameters");
+			System.out.println("-maxjobs 4711 -- maximum number of jobs, that should be worked on");
+			System.out.println("-maxminutes 30 -- maximum number of minutes, the program should run. A running evaluation will be finished.");
+			return;
+		}
+		String parameterCountry = "";
+		String parameterAdminHierarchy = "";
+		String parameterMunicipiality = "";
+		String parameterJobname = "";
+		String parameterOfficialkeysId = "";
+		boolean parameterAllMissingJobs = false;
+		int parameterMaxJobs = -1;
+		int parameterMaxMinutes = -1;
+		
+		if (args.length >= 1) {
+			int argsOkCount = 0;
+			for (int argsi = 0; argsi < args.length; argsi += 2) {
+				System.out.print(" args pair analysing #: " + argsi + "  ===" + args[argsi] + "===");
+				if (args.length > argsi + 1) {
+					System.out.println("  args # + 1: " + (argsi + 1) + "   ===" + args[argsi + 1] + "===");
+				}
+				if (args[argsi].equals("-country")) {
+					parameterCountry = args[argsi + 1];
+					argsOkCount  += 2;
+				}
+				if (args[argsi].equals("-adminhierarchy")) {
+					parameterAdminHierarchy = args[argsi + 1];
+					argsOkCount  += 2;
+				}
+				if (args[argsi].equals("-municipality")) {
+					parameterMunicipiality = args[argsi + 1];
+					argsOkCount  += 2;
+				}
+				if (args[argsi].equals("-jobname")) {
+					parameterJobname = args[argsi + 1];
+					argsOkCount  += 2;
+				}
+				if (args[argsi].equals("-officialkeysid")) {
+					parameterOfficialkeysId = args[argsi + 1];
+					argsOkCount  += 2;
+				}
+
+				if (args[argsi].equals("-maxjobs")) {
+					parameterMaxJobs = Integer.parseInt(args[argsi + 1]);
+					argsOkCount  += 2;
+				}
+				if (args[argsi].equals("-maxminutes")) {
+					parameterMaxMinutes = Integer.parseInt(args[argsi + 1]);
+					argsOkCount  += 2;
+				}
+				if (args[argsi].equals("-allmissingjobs")) {
+					parameterAllMissingJobs = true;
+					argsOkCount  += 1;
+				}
+
+				System.out.println("-maxjobs 4711 -- maximum number of jobs, that should be worked on");
+System.out.println("-maxminutes 30 -- maximum number of minutes, the program should run. A running evaluation will be finished.");
+			}
+			if (argsOkCount < args.length) {
+				System.out.println("ERROR: not all programm parameters were valid, STOP");
+				return;
+			}
+		}
+		
+		if(		parameterCountry.equals("") 
+			|| (parameterCountry.indexOf("*") != -1)
+			|| (parameterCountry.indexOf("*") != -1))
+		{
+			System.out.println("Parameter -country must be set at least and can't contain a wildcard");
+			return;
+		}
+		
+		
+		parameterAdminHierarchy = parameterAdminHierarchy.replace("*", "%");
+		parameterMunicipiality = parameterMunicipiality.replace("*", "%");
+		parameterJobname = parameterJobname.replace("*", "%");
+		parameterOfficialkeysId = parameterOfficialkeysId.replace("*", "%");
+
+		
+		
 		HousenumberlistReader hnrreader = new HousenumberlistReader();
 		hnrreader.setDBConnection(	configuration.db_application_url, 
 									configuration.db_application_username, 
@@ -160,53 +251,68 @@ public class Evaluation {
 		HousenumberCollection osm_housenumbers = new HousenumberCollection();
 		HousenumberCollection evaluated_housenumbers = new HousenumberCollection();
 		
-		List<Job> jobs = hnrserver.getMissingCountryJobs("Poland");
-		//List<Job> jobs = hnrserver.findJobs("Poland","*", "*", "32*");
-		//List<Job> jobs = hnrserver.findJobs("Schweiz","Zürich", "*", "*");
-		//List<Job> jobs = hnrserver.findJobs("Bundesrepublik Deutschland","Berlin", "*", "*");
+		List<Job> jobs;
 
+		if(parameterAllMissingJobs)
+			jobs = hnrserver.getMissingCountryJobs(parameterCountry);
+		else
+			jobs = hnrserver.findJobs(parameterCountry,parameterMunicipiality, parameterJobname, parameterOfficialkeysId);
+		
 
-		//Integer relationsid = 2597485;
-		//evaluation.setMunicipality("Poland", "Gdańsk");		
+		//jobs = hnrserver.findJobs("Schweiz","Zürich", "Zürich", "*");
+		
+		System.out.println("Number of Jobs received from Server: " + jobs.size());
+		
+		java.util.Date jobstart = new java.util.Date();
+		java.util.Date jobend = new java.util.Date();
 
-/*		Long relationid = 2981500L;
-		String country = "Poland";
-		String municipality = "Górowo Iławeckie";
-		String jobname = municipality;
-*/
-boolean skipping = false;
 		for(int jobindex = 0; jobindex < jobs.size(); jobindex++) {
+
+	
+			if((parameterMaxJobs != -1) && (parameterMaxJobs < (jobindex + 1))) {
+				System.out.println("maximum number of jobs, as specified, arrived. Stop further processing");
+				break;
+			}
+			if(parameterMaxMinutes != -1) {
+				Long tempprogramstarttime = programStart.getTime();
+				Long maxTime = programStart.getTime() + parameterMaxMinutes * 60 * 1000;
+				java.util.Date now = new java.util.Date();
+				if(now.getTime() > maxTime) {
+					System.out.println("maximum time, as specified, arrived. Stop further processing");
+					break;
+				} else {
+					System.out.println("Info: specified limit of minutes not arrived, useable minutes to work: " + Math.round((maxTime - now.getTime())/60/1000));
+				}
+			}
 
 			Job actjob = jobs.get(jobindex);
 
 			Long relationid = actjob.osmrelationid;
-			String country = actjob.country;
-			String municipality = actjob.municipality;
 			String jobname = actjob.jobname;
-		
-//			if(municipality.equals("Boniewo"))
-//				skipping = false;
-			if(jobname.equals("gmina Grudziądz"))
-				skipping = false;
-			if(relationid == 2555214)
-				skipping = false;
-			if(skipping)
-				continue;
 
-			//evaluation.setMunicipalityAndJobname(country, municipality, jobname);
 			evaluation.setJobData(actjob);
+			
+			
+			jobstart = new java.util.Date();
+			System.out.println("start working on job " + actjob.toString() + "; started at " + jobstart.toString());
 
 			evaluation.setHousenumberAdditionCaseSensity(false);
-			System.out.println("Number of housenumberlist entries at start: " + evaluation.housenumberlist.length());
 
 			java.util.Date dbloadstart = new java.util.Date();
 			list_housenumbers.clear();
-			list_housenumbers = hnrreader.ReadListFromDB(evaluation);
+			//list_housenumbers = hnrreader.ReadListFromDB(evaluation);
+			list_housenumbers = hnrserver.ReadListFromServer(evaluation);
+			System.out.println("Number of official housenumbers: " + list_housenumbers.length());
+			if(list_housenumbers.length() == 0) {
+				System.out.println("Warning: job will be ignored, because no official housenumbers found for job " + actjob.toString() + "; started at " + jobstart.toString());
+				continue;
+			}
 			java.util.Date dbloadend = new java.util.Date();
 			java.util.Date overpassloadstart = new java.util.Date();
 			osm_housenumbers.clear();
 			osm_housenumbers = osmreader.ReadDataFromOverpass(evaluation, relationid);
-			evaluation.osmtime = overpassloadstart.getTime() - 5 * MINUTES_IN_MILLISECONDS;
+			System.out.println("Number of OSM housenumbers: " + osm_housenumbers.length());
+			//evaluation.osmtime will be set inside readdatafromoverpass
 			evaluation.evaluationtime = overpassloadstart.getTime();
 			java.util.Date overpassloadend = new java.util.Date();
 			java.util.Date mergedatastart = new java.util.Date();
@@ -218,17 +324,26 @@ boolean skipping = false;
 				+ evaluation.housenumberlist.length() + "   " + evaluation.housenumberlist.count_unchanged());
 
 			int lfdnr = 0;
-			//while(1==1) {
+			java.util.Date uploadstart = null;
+			java.util.Date uploadend = null;
+			//while(lfdnr < 1000) {
 				lfdnr++;
 				System.out.println("upload Nr. " + lfdnr);
-				java.util.Date uploadstart = new java.util.Date();
+				uploadstart = new java.util.Date();
 				hnrserver.writeEvaluationToServer(evaluation, evaluated_housenumbers);
-				java.util.Date uploadend = new java.util.Date();
+				uploadend = new java.util.Date();
 			//}
 			System.out.println("time for db load time in sek: " + (dbloadend.getTime() - dbloadstart.getTime())/1000);
 			System.out.println("time for overpass load time in sek: " + (overpassloadend.getTime() - overpassloadstart.getTime())/1000);
 			System.out.println("time for internal merge time in sek: " + (mergedataend.getTime() - mergedatastart.getTime())/1000);
 			System.out.println("time for result upload time in sek: " + (uploadend.getTime() - uploadstart.getTime())/1000);
+
+			jobend = new java.util.Date();
+			System.out.println("finished working on job " + actjob.toString() + "; ended at " + jobend.toString() + " duration in sec: " 
+				+ (jobend.getTime() - jobstart.getTime())/1000);
 		}
+		java.util.Date programEnd = new java.util.Date();
+		System.out.println("Program finished at " + programEnd.toString() + " duration in sec: "
+			+ (programEnd.getTime() - programStart.getTime())/1000);
 	}
 }
