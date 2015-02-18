@@ -39,11 +39,12 @@ public class Housenumber {
 	private Treffertyp treffertyp = Treffertyp.UNSET;
 	private String	hausnummer = "";
 	private String	osm_tag = "";			// now "key"=>"value" (including " !!!) - old, up to 23.08.2013: value of osm tag building where found addr:housenumber=*
-	private int 		osm_tag_prio = 9999;
+	private int 	osm_tag_prio = 9999;
 	private String	osm_objektart = "";		// "way", "node" or "relation"
-	private long		osm_id = -1L;
+	private long	osm_id = -1L;
 	private String  lonlat = "";
 	private String	lonlat_source = "";
+	private String  hausnummerkommentar = "";
 
 	private String	state = ""; // ""=not set; "untouched"=got from database, without updates; "updated"=updated, "deleted!; "added"=real new entry
 
@@ -173,9 +174,9 @@ public class Housenumber {
 //      that mean in evaluation 1 the object a will be used
 //		in evaluation 2 the object b will be used, because the value in this.osm_id have changed
 //		either prio must really improve or something more than just osm_id must be changed to switch to another object
-			System.out.println("in_entry.id ==="+in_entry.id+"===     this.id ==="+this.id+"===");
-			System.out.println("in_entry  details ==="+in_entry.toStringlong()+"===");
-			System.out.println("vs.  this details ==="+this.toStringlong()+"===");
+			//System.out.println("in_entry.id ==="+in_entry.id+"===     this.id ==="+this.id+"===");
+			//System.out.println("in_entry  details ==="+in_entry.toStringlong()+"===");
+			//System.out.println("vs.  this details ==="+this.toStringlong()+"===");
 
 
 			 // if change of treffertyp
@@ -327,7 +328,7 @@ public class Housenumber {
 					this.setstate("unchanged");
 				}
 			}
-			System.out.println("actual state ==="+this.getstate()+"=== after possible changing ...");
+			//System.out.println("actual state ==="+this.getstate()+"=== after possible changing ...");
 
 			
 			
@@ -376,7 +377,7 @@ public class Housenumber {
 			int act_prio = START_PRIO;
 
 			if(act_key.equals("amenity")) {
-				System.out.println(" key amenity  value ignoring ==="+act_value+"===");
+				System.out.println(" key amenity  value ignoring ==="+act_value+"=== on osm-id " + this.osm_objektart + this.osm_id);
 				act_prio = 20;
 			}
 			if(act_key.equals("building")) {
@@ -385,10 +386,12 @@ public class Housenumber {
 //TODO diverse values checken und setzen
 				else if (	act_value.equals("yes") ||
 							act_value.equals("office") ||
+							act_value.equals("house") ||
+							act_value.equals("construction") ||
 							act_value.equals("apartments")) {
 					act_prio = 2;
 				} else {
-					System.out.println(" other new.building value ==="+act_value+"===");
+					System.out.println(" other new.building value ==="+act_value+"=== on osm-id " + this.osm_objektart + this.osm_id);
 					act_prio = 9;
 				}
 			}
@@ -402,7 +405,7 @@ public class Housenumber {
 				new_prio = act_prio;
 				if(act_prio < START_PRIO)
 					selected_tag = act_tag;
-				System.out.println("ermittelte Prio für act. object: "+new_prio+"     selected_tag ==="+selected_tag+"===");
+				//System.out.println("ermittelte Prio für act. object: "+new_prio+"     selected_tag ==="+selected_tag+"===");
 			}
 		} // end of loop over alle tags
 
@@ -440,13 +443,13 @@ public class Housenumber {
 	}
 	public void setLonlat(String lonlat) {
 		if((lonlat != null) && !lonlat.equals(this.lonlat)) {
-			System.out.println("in setter set_lonlat from ==="+this.lonlat+"===    to ==="+lonlat+"===    btw getstate ==="+this.getstate()+"===");
+			//System.out.println("in setter set_lonlat from ==="+this.lonlat+"===    to ==="+lonlat+"===    btw getstate ==="+this.getstate()+"===");
 			this.lonlat = lonlat;
 			String actState = this.getstate();
 			if(		actState.equals("")
 				||	actState.equals("dbloaded")
 				||	actState.equals("unchanged")) {
-				System.out.println("in setter setstate from ==="+actState+"===    to ==="+"changed"+"===");
+				//System.out.println("in setter setstate from ==="+actState+"===    to ==="+"changed"+"===");
 				this.setstate("changed");
 			}
 		}
@@ -459,21 +462,29 @@ public class Housenumber {
 
 	public void setLonlat_source(String lonlat_source) {
 		if((lonlat_source != null) && !lonlat_source.equals(this.lonlat_source)) {
-			System.out.println("in setter set_lonlat_source from ==="+this.lonlat_source+"===    to ==="+lonlat_source+"===   btw getstate ==="+this.getstate()+"===");
+			//System.out.println("in setter set_lonlat_source from ==="+this.lonlat_source+"===    to ==="+lonlat_source+"===   btw getstate ==="+this.getstate()+"===");
 			this.lonlat_source = lonlat_source;
 			String actState = this.getstate();
 			if(		actState.equals("")
 					||	actState.equals("dbloaded")
 					||	actState.equals("unchanged")) {
-				System.out.println("in setter setstate from ==="+actState+"===    to ==="+"changed"+"===");
+				//System.out.println("in setter setstate from ==="+actState+"===    to ==="+"changed"+"===");
 				this.setstate("changed");
 			}
 		}
 		
 	}
 	
+	public String getHousenumberComment() {
+		return this.hausnummerkommentar;
+		
+	}
 
-	
+	public void setHousenumberComment(String comment) {
+		this.hausnummerkommentar = comment;
+	}
+
+
 	/**
 	 * @param create sortable version of housenumber and store in entry
 	 */
@@ -499,7 +510,7 @@ public class Housenumber {
 			} else {
 				this.hausnummer_normalisiert = hausnummersortierbar.toLowerCase();
 			}
-			System.out.println("in .normalize of class Entry: set .hausnummer_sortierbar to ===" + this.hausnummer_sortierbar +"===");
+			//System.out.println("in .normalize of class Entry: set .hausnummer_sortierbar to ===" + this.hausnummer_sortierbar +"===");
 		}
 	}
 	

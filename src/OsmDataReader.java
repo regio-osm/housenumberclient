@@ -1,6 +1,5 @@
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
-import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
@@ -9,7 +8,6 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
-import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
@@ -25,17 +23,16 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.TreeMap;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.zip.GZIPInputStream;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
 
-import com.myjavatools.web.ClientHttpRequest;
+
+
+import de.regioosm.housenumbers.Applicationconfiguration;
 
 import org.openstreetmap.osmosis.core.OsmosisRuntimeException;
 import org.openstreetmap.osmosis.core.container.v0_6.EntityContainer;
@@ -52,17 +49,9 @@ import org.openstreetmap.osmosis.core.task.v0_6.Sink;
 import org.openstreetmap.osmosis.core.task.v0_6.RunnableSource;
 import org.openstreetmap.osmosis.xml.common.CompressionMethod;
 import org.openstreetmap.osmosis.xml.v0_6.XmlReader;
-import org.openstreetmap.osmosis.pgsnapshot.common.NodeLocationStoreType;
-import org.openstreetmap.osmosis.pgsnapshot.v0_6.impl.WayGeometryBuilder;
-import org.postgis.GeometryCollection;
-import org.postgis.LineString;
 import org.postgis.Point;
-import org.postgis.Polygon;
-import org.postgis.LinearRing;
-import org.postgis.MultiPolygon;
-import org.postgis.ComposedGeom;
-import org.postgis.PGgeometry;
-import org.postgis.Geometry;
+
+import java.text.ParseException;
 
 
 
@@ -79,6 +68,8 @@ import org.postgis.Geometry;
 public class OsmDataReader {
 	private static final int HAUSNUMMERSORTIERBARLENGTH = 4;
 
+	Applicationconfiguration configuration = new Applicationconfiguration();
+	
 	String dbconnection = "";
 	String dbusername = "";
 	String dbpassword = "";
@@ -183,7 +174,7 @@ public class OsmDataReader {
 			urlConn = url.openConnection(); 
 			urlConn.setDoInput(true); 
 			urlConn.setUseCaches(false);
-			urlConn.setRequestProperty("User-Agent", "regio-osm.de Housenumber Evaluation Client, contact: strassenliste@diesei.de");
+//			urlConn.setRequestProperty("User-Agent", "regio-osm.de Housenumber Evaluation Client, contact: strassenliste@diesei.de");
 			urlConn.setRequestProperty("Accept-Encoding", "gzip, compress");
 			
 			String inputline = "";
@@ -214,10 +205,11 @@ public class OsmDataReader {
 
 			
 				// first, save upload data as local file, just for checking or for history
-			DateFormat time_formatter = new SimpleDateFormat("yyyyMMdd-HHmmssZ");
+			DateFormat time_formatter = new SimpleDateFormat("yyyyMMdd-HHmmss'Z'");
 			String downloadtime = time_formatter.format(new Date());
 			
-			String filename = "overpassdownload" + "/" + downloadtime + ".osm";
+			String filename = configuration.application_datadir + File.separator + "overpassdownload" 
+				+ File.separator + downloadtime + ".osm";
 			System.out.println("overpassdownloaddatei ===" + filename + "===");
 
 			File outputfile = new File(filename);
@@ -227,9 +219,32 @@ public class OsmDataReader {
 			osmOutput.close();
 			
 				// ok, osm result is in osmresultcontent.toString() available
-			System.out.println("Dateilänge url Datenempfang: " + osmresultcontent.toString().length());
+			System.out.println("Dateilänge nach optionalem Entpacken in Bytes: " + osmresultcontent.toString().length());
 			//System.out.println("Dateioutput ===" + osmresultcontent.toString() + "===");
 
+			int firstnodepos = osmresultcontent.toString().indexOf("<node");
+			if(firstnodepos != -1) {
+				String osmheader = osmresultcontent.toString().substring(0,firstnodepos);
+				int osm_base_pos = osmheader.indexOf("osm_base=");
+				if(osm_base_pos != 1) {
+					int osm_base_valuestartpos = osmheader.indexOf("\"",osm_base_pos);
+					int osm_base_valueendpos = osmheader.indexOf("\"",osm_base_valuestartpos + 1);
+					if((osm_base_valuestartpos != -1) && (osm_base_valueendpos != -1)) { 
+						String osm_base_value = osmheader.substring(osm_base_valuestartpos + 1,osm_base_valueendpos);
+						DateFormat utc_formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
+						try {
+							evaluation.osmtime = utc_formatter.parse(osm_base_value).getTime();
+						} catch (ParseException parseerror) {
+							System.out.println("Errordue to getting api-request (ioexception). url was ==="+url_string+"===");					
+							System.out.println(parseerror.toString());
+							parseerror.printStackTrace();
+						}
+					}
+				}
+			}
+
+			
+			
 			Sink sinkImplementation = new Sink() {
 
 				@Override
@@ -241,17 +256,17 @@ public class OsmDataReader {
 				
 				@Override
 				public void complete() {
-					System.out.println("hallo Sink.complete  aktiv:    nodes #"+nodes_count+"   ways #"+ways_count+"   relations #"+relations_count);
+					//System.out.println("hallo Sink.complete  aktiv:    nodes #"+nodes_count+"   ways #"+ways_count+"   relations #"+relations_count);
 
 						// loop over all osm node objects
 	    	    	for (Map.Entry<Long, Node> nodemap: gibmirnodes.entrySet()) {
 	    				Long objectid = nodemap.getKey();
-		        		Collection<Tag> tags = nodemap.getValue().getTags();
+	    				Collection<Tag> tags = nodemap.getValue().getTags();
 		        		String address_street = "";
 		        		String address_housenumber = "";
 		        		HashMap<String,String> keyvalues = new HashMap<String,String>();
 		        		for (Tag tag: tags) {
-		        			System.out.println("way #" + objectid + ": Tag [" + tag.getKey() + "] ==="+tag.getValue()+"===");
+		        			//System.out.println("way #" + objectid + ": Tag [" + tag.getKey() + "] ==="+tag.getValue()+"===");
 		        			keyvalues.put(tag.getKey(), tag.getValue());
 			        		if(		tag.getKey().equals("addr:street")
 			        			||	tag.getKey().equals("addr:place"))
@@ -262,9 +277,9 @@ public class OsmDataReader {
 						if(		(! address_street.equals(""))
 							&& 	(! address_housenumber.equals(""))) {
 							Housenumber osmhousenumber = new Housenumber(evaluation.getHousenumberlist().ishousenumberadditionCaseSentity());
+							osmhousenumber.setOSMObjekt("node", objectid);
 							osmhousenumber.setStrasse(address_street);
 							osmhousenumber.set_osm_tag(keyvalues);
-							osmhousenumber.setOSMObjekt("node", objectid);
 							String objectlonlat = nodemap.getValue().getLongitude() + " " + nodemap.getValue().getLatitude();
 							osmhousenumber.setLonlat(objectlonlat);
 							osmhousenumber.setLonlat_source("OSM");
@@ -294,7 +309,7 @@ public class OsmDataReader {
 		        		String centroid_lat = "";
 		        		HashMap<String,String> keyvalues = new HashMap<String,String>();
 		        		for (Tag tag: tags) {
-		        			System.out.println("way #" + objectid + ": Tag [" + tag.getKey() + "] ==="+tag.getValue()+"===");
+		        			//System.out.println("way #" + objectid + ": Tag [" + tag.getKey() + "] ==="+tag.getValue()+"===");
 		        			keyvalues.put(tag.getKey(), tag.getValue());
 			        		if(		tag.getKey().equals("addr:street")
 			        			||	tag.getKey().equals("addr:place"))
@@ -309,9 +324,9 @@ public class OsmDataReader {
 						if(		(! address_street.equals(""))
 							&& 	(! address_housenumber.equals(""))) {
 							Housenumber osmhousenumber = new Housenumber(evaluation.getHousenumberlist().ishousenumberadditionCaseSentity());
+							osmhousenumber.setOSMObjekt("way", objectid);
 							osmhousenumber.setStrasse(address_street);
 							osmhousenumber.set_osm_tag(keyvalues);
-							osmhousenumber.setOSMObjekt("way", objectid);
 							osmhousenumber.setHausnummer(address_housenumber);
 							String objectlonlat = centroid_lon + " " + centroid_lat;
 							osmhousenumber.setLonlat(objectlonlat);
@@ -341,7 +356,7 @@ public class OsmDataReader {
 		        		String address_housenumber = "";
 		        		HashMap<String,String> keyvalues = new HashMap<String,String>();
 		        		for (Tag tag: tags) {
-		        			System.out.println("relation #" + objectid + ": Tag [" + tag.getKey() + "] ==="+tag.getValue()+"===");
+		        			//System.out.println("relation #" + objectid + ": Tag [" + tag.getKey() + "] ==="+tag.getValue()+"===");
 		        			keyvalues.put(tag.getKey(), tag.getValue());
 			        		if(		tag.getKey().equals("addr:street")
 			        			||	tag.getKey().equals("addr:place"))
@@ -352,9 +367,9 @@ public class OsmDataReader {
 						if(		(! address_street.equals(""))
 							&& 	(! address_housenumber.equals(""))) {
 							Housenumber osmhousenumber = new Housenumber(evaluation.getHousenumberlist().ishousenumberadditionCaseSentity());
+							osmhousenumber.setOSMObjekt("relation", objectid);
 							osmhousenumber.setStrasse(address_street);
 							osmhousenumber.set_osm_tag(keyvalues);
-							osmhousenumber.setOSMObjekt("relation", objectid);
 							osmhousenumber.setHausnummer(address_housenumber);
 	//set centroid or something similar from way object   osmhousenumber.setLonlat(rs_objekte.getString("lonlat"));
 							osmhousenumber.setLonlat_source("OSM");
@@ -378,12 +393,16 @@ public class OsmDataReader {
 				@Override
 				public void initialize(Map<String, Object> metaData) {
 					// TODO Auto-generated method stub
-					System.out.println("hallo Sink.initialize aktiv !!!");
+					//System.out.println("hallo Sink.initialize aktiv !!!");
+	    	    	for (Map.Entry<String, Object> daten: metaData.entrySet()) {
+	    				String key = daten.getKey();
+	    				Object tags = daten.getValue();
+	    	    	}
 				}
 				
 				@Override
 				public void process(EntityContainer entityContainer) {
-					System.out.println("hallo Sink.process  aktiv:    nodes #"+nodes_count+"   ways #"+ways_count+"   relations #"+relations_count);
+					//System.out.println("hallo Sink.process  aktiv:    nodes #"+nodes_count+"   ways #"+ways_count+"   relations #"+relations_count);
 
 			        Entity entity = entityContainer.getEntity();
 			        if (entity instanceof Node) {
@@ -395,7 +414,7 @@ public class OsmDataReader {
 
 						NodeContainer nodec = (NodeContainer) entityContainer;
 						Node node = nodec.getEntity();
-						System.out.println("Node lon: "+node.getLongitude() + "  lat: "+node.getLatitude()+"===");
+						//System.out.println("Node lon: "+node.getLongitude() + "  lat: "+node.getLatitude()+"===");
 
 						gibmirnodes.put(entity.getId(), node);
 			        } else if (entity instanceof Way) {
@@ -408,7 +427,7 @@ public class OsmDataReader {
 						Way way = wayc.getEntity();
 						//System.out.println("Weg "+way.getWayNodes()+"===");
 						List<WayNode> actwaynodes = way.getWayNodes();
-						System.out.println("Weg enthält Anzahl knoten: "+actwaynodes.size());
+						//System.out.println("Weg enthält Anzahl knoten: "+actwaynodes.size());
 						Integer lfdnr = 0;
 						Double lon_sum = 0.0D;
 						Double lat_sum = 0.0D;
@@ -424,7 +443,7 @@ public class OsmDataReader {
 						}
 		        		Collection<Tag> waytags = way.getTags();
 						for (Tag tag: waytags) {
-		        			System.out.println("Tag [" + tag.getKey() + "] ==="+tag.getValue()+"===");
+		        			//System.out.println("Tag [" + tag.getKey() + "] ==="+tag.getValue()+"===");
 						}
 						Double centroid_lon = lon_sum / lfdnr;
 						Double centroid_lat = lat_sum / lfdnr;
@@ -437,7 +456,7 @@ public class OsmDataReader {
 			    		Integer polygonanzahl = 0;
 			            //do something with the relation
 			        	relations_count++;
-			        	System.out.println("Relation   " + entity.toString());
+			        	//System.out.println("Relation   " + entity.toString());
 			        	List<RelationMember> relmembers =  ((Relation) entity).getMembers();
 
 						RelationContainer relationc = (RelationContainer) entityContainer;
@@ -447,7 +466,7 @@ public class OsmDataReader {
 		        		String relationType = "";
 		        		String relationName = "";
 						for (Tag tag: relationtags) {
-		        			System.out.println("Tag [" + tag.getKey() + "] ==="+tag.getValue()+"===");
+		        			//System.out.println("Tag [" + tag.getKey() + "] ==="+tag.getValue()+"===");
 		        			if(	tag.getKey().equals("type"))
 		        				relationType = tag.getValue();
 		        			if(	tag.getKey().equals("name"))
@@ -465,17 +484,15 @@ public class OsmDataReader {
 							return;
 			        	}
 
-						System.out.println("  Anzahl Member: "+relmembers.size());
+						//System.out.println("  Anzahl Member: "+relmembers.size());
 
 
 			        	for(int memberi = 0; memberi < relmembers.size(); memberi++) {
-if(memberi > 0)
-	System.out.println("mehr als 1 Member, aktiv: "+memberi);
 			        		RelationMember actmember = relmembers.get(memberi);
 			        		EntityType memberType = actmember.getMemberType();
 			        		long memberId = actmember.getMemberId();
 
-			        		System.out.println("relation member ["+memberi+"]  Typ: "+memberType+"   ==="+actmember.toString()+"===   Role ==="+actmember.getMemberRole()+"===");
+			        		//System.out.println("relation member ["+memberi+"]  Typ: "+memberType+"   ==="+actmember.toString()+"===   Role ==="+actmember.getMemberRole()+"===");
 
 			        		if(actmember.getMemberRole().equals("street"))		// ignore relation member with role street
 			        			continue;
@@ -486,32 +503,32 @@ if(memberi > 0)
 					        		System.out.println("  Hier die Tags des Node:  "+gibmirnodes.get(memberId).getTags().toString()+"===");
 					        		Collection<Tag> nodetags = gibmirnodes.get(memberId).getTags();
 									for (Tag tag: nodetags) {
-					        			System.out.println("Tag [" + tag.getKey() + "] ==="+tag.getValue()+"===");
+					        			//System.out.println("Tag [" + tag.getKey() + "] ==="+tag.getValue()+"===");
 									}
 									nodetags.add(new Tag("addr:street", relationName));
 
 					        		Collection<Tag> changednodetags = gibmirnodes.get(memberId).getTags();
 									for (Tag tag: changednodetags) {
-					        			System.out.println("Tag [" + tag.getKey() + "] ==="+tag.getValue()+"===");
+					        			//System.out.println("Tag [" + tag.getKey() + "] ==="+tag.getValue()+"===");
 									}
 			    				}
 			    			} else if (EntityType.Way.equals(memberType)) {
 			    				if (availableWays.get(memberId)) {
-			    					System.out.println("in Relation Member vom Type   WAY 0enthalten  ==="+gibmirways.get(memberId).toString()+"===");
+			    					//System.out.println("in Relation Member vom Type   WAY 0enthalten  ==="+gibmirways.get(memberId).toString()+"===");
 			    					Collection<Tag> waytags = gibmirways.get(memberId).getTags();
 									for (Tag tag: waytags) {
-					        			System.out.println("Tag [" + tag.getKey() + "] ==="+tag.getValue()+"===");
+					        			//System.out.println("Tag [" + tag.getKey() + "] ==="+tag.getValue()+"===");
 									}
 									waytags.add(new Tag("addr:street", relationName));
 
 					        		Collection<Tag> changedwaytags = gibmirways.get(memberId).getTags();
 									for (Tag tag: changedwaytags) {
-					        			System.out.println("Tag [" + tag.getKey() + "] ==="+tag.getValue()+"===");
+					        			//System.out.println("Tag [" + tag.getKey() + "] ==="+tag.getValue()+"===");
 									}
 
 									Way actway = gibmirways.get(memberId);
 									List<WayNode> actwaynodes = actway.getWayNodes();
-									System.out.println("Weg enthält Anzahl knoten: "+actwaynodes.size());
+									//System.out.println("Weg enthält Anzahl knoten: "+actwaynodes.size());
 									Integer lfdnr = 0;
 									List<Point> points = new LinkedList<Point>();
 									for (WayNode waynode: actwaynodes) {
@@ -540,7 +557,8 @@ if(memberi > 0)
 			
 			RunnableSource osmfilereader;
 
-		    File tempfile = null;
+
+			File tempfile = null;
 			try {
 			    // Create temp file.
 			    tempfile = File.createTempFile("overpassresult", ".osm");
@@ -568,12 +586,12 @@ if(memberi > 0)
 	    } catch (InterruptedException e) {
 	        /* do nothing */
 		} catch (MalformedURLException mue) {
-			System.out.println("Error due to getting mapquest api-request (malformedurlexception). url was ==="+url_string+"===");					
+			System.out.println("Error due to getting api-request (malformedurlexception). url was ==="+url_string+"===");					
 			System.out.println(mue.toString());
 			String local_messagetext = "MalformedURLException: URL-Request was ==="+url_string+"=== and got Trace ==="+mue.toString()+"===";
 			return housenumbers;
 		} catch (IOException ioe) {
-			System.out.println("Error due to getting mapquest api-request (ioexception). url was ==="+url_string+"===");					
+			System.out.println("Error due to getting api-request (ioexception). url was ==="+url_string+"===");					
 			System.out.println(ioe.toString());
 			String local_messagetext = "IOException: URL-Request was ==="+url_string+"=== and got Trace ==="+ioe.toString()+"===";
 			return housenumbers;

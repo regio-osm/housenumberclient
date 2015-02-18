@@ -55,7 +55,11 @@ public class Job {
 	private int index = 0;
 
 	List<Job> jobs = new ArrayList<Job>();
-	
-	
+
+	public String toString() {
+		String output = "country=" + country + ", municipality=" + municipality + ", officialkeysId=" + officialkeysId + ", "
+			+ "adminLevel=" + adminLevel + ", jobname=" + jobname + ", subid=" + subid + ", osmrelationid=" + osmrelationid;
+		return output; 
+	}
 }
 

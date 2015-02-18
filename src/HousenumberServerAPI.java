@@ -1,9 +1,10 @@
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
@@ -11,6 +12,7 @@ import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
+import java.net.URLEncoder;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -18,6 +20,19 @@ import java.util.Date;
 import java.util.List;
 import java.nio.charset.StandardCharsets;
 
+
+import de.regioosm.housenumbers.Applicationconfiguration;
+/*
+ * ATTENTION: upload of large files (at 01/2015 max 10 MB) can fails.
+ * 			  on Server, tomcat7 must be configured to allow larger files.
+ * 			  This can be set in $TOMCAT_HOME/conf/server.xml at section
+ *    <Connector port="8080" protocol="HTTP/1.1"
+ *               connectionTimeout="20000"
+ *               URIEncoding="UTF-8"
+ *               maxPostSize="30000000"				<==== add this line. Here the limit is set to 30 MB
+ *               redirectPort="8443" />
+ * 
+ */
 
 /**
  *
@@ -33,18 +48,29 @@ import java.nio.charset.StandardCharsets;
 
 
 public class HousenumberServerAPI {
-	//private String serverUrl = "http://regio-osm.de";
-	//private String serverUrl = "http://localhost";
-	private String serverUrl = "http://localhost:8080"; //     /housenumberserverJavaServlet/Upload
-//TODO configuration
+	Applicationconfiguration configuration = new Applicationconfiguration();
+	static final String USER_AGENT = "regio-osm.de Housenumber Evaluation Client, contact: strassenliste@diesei.de";
 
+	private String serverUrl = "";
+//TODO configuration
+	public HousenumberServerAPI() {
+		serverUrl = configuration.housenumberseverAPIprotocol + "://"
+			+ configuration.housenumberseverAPIhost;
+		if(! configuration.housenumberseverAPIport.equals(""))
+			serverUrl += ":" + configuration.housenumberseverAPIport;
+		if(! configuration.housenumberseverAPIport.equals(""))
+			serverUrl += configuration.housenumberseverAPIrooturl;
+		else
+			serverUrl += "/";
+	}
+	
 	public List<Job> findJobs(String country, String municipality, String jobname, String officialkeys_id) {
 		List<Job> foundjobs = new ArrayList<Job>();
 
 		java.util.Date sendToServerStarttime = new java.util.Date();
 
 		try {
-			String url_string = serverUrl + "/housenumberserverAPI/findjobs";
+			String url_string = serverUrl + "/findjobs";
 
 			String boundary = Long.toHexString(System.currentTimeMillis()); // Just generate some unique random value.
 
@@ -108,7 +134,7 @@ public class HousenumberServerAPI {
 				String linecolumns[] = fileline.split("\t");
 				
 				Job actjob = new Job(linecolumns[0], linecolumns[1], linecolumns[2], 
-					Integer.parseInt(linecolumns[3]), linecolumns[4], linecolumns[5], Long.parseLong(linecolumns[5]));
+					Integer.parseInt(linecolumns[3]), linecolumns[4], linecolumns[5], Long.parseLong(linecolumns[6]));
 				foundjobs.add(actjob);
 			}
 			writer.close();
@@ -142,7 +168,7 @@ public class HousenumberServerAPI {
 		java.util.Date sendToServerStarttime = new java.util.Date();
 	
 		try {
-			String url_string = serverUrl + "/housenumberserverAPI/getMissingCountryJobs";
+			String url_string = serverUrl + "/getMissingCountryJobs";
 	
 			String boundary = Long.toHexString(System.currentTimeMillis()); // Just generate some unique random value.
 	
@@ -197,7 +223,7 @@ public class HousenumberServerAPI {
 				String linecolumns[] = fileline.split("\t");
 
 				Job actjob = new Job(linecolumns[0], linecolumns[1], linecolumns[2], 
-						Integer.parseInt(linecolumns[3]), linecolumns[4], linecolumns[5], Long.parseLong(linecolumns[5]));
+						Integer.parseInt(linecolumns[3]), linecolumns[4], linecolumns[5], Long.parseLong(linecolumns[6]));
 				foundjobs.add(actjob);
 			}
 			writer.close();
@@ -230,7 +256,7 @@ public class HousenumberServerAPI {
 			DateFormat time_formatter = new SimpleDateFormat("yyyyMMdd-HHmmssZ");
 			String uploadtime = time_formatter.format(new Date());
 	
-			filename += "uploaddata" + "/" + uploadtime + ".result";
+			filename += configuration.application_datadir + File.separator +  "uploaddata" + File.separator + uploadtime + ".result";
 			System.out.println("uploaddatei ===" + filename + "===");
 
 			File outputfile = new File(filename);
@@ -242,12 +268,31 @@ public class HousenumberServerAPI {
 			PrintWriter osmOutput = null;
 			osmOutput = new PrintWriter(new BufferedWriter(new OutputStreamWriter(
 					new FileOutputStream(filename),StandardCharsets.UTF_8)));
-			
 			osmOutput.println(result_content);
 			osmOutput.close();
+
+			// sub start
+/*	this zip generation and output to file works, but no idea, how to include in upload multiform below, so deactivated
+			GZIPOutputStream gos = new GZIPOutputStream(os);
+			System.out.println("text.getBytes(): " + result_content.getBytes("UTF-8").length);
+			gos.write(result_content.getBytes("UTF-8"));
+			gos.close();
+			byte[] compressed = os.toByteArray();
+			System.out.println("compressed .length: " + compressed.length);
+			String zippedResultContent = os.toString();
+			System.out.println("zippedResultContent .length: " + zippedResultContent.length());
+			os.close();
+			// sub end
+
+			FileOutputStream out=new FileOutputStream(filename + ".zip");
+			for (int i=0; i < compressed.length; i++) {
+				out.write(compressed[i]);
+			}
+			out.flush();
+			out.close();
+*/
 			
-			
-			String url_string = serverUrl + "/housenumberserverAPI/Upload";
+			String url_string = serverUrl + "/Upload";
 //TODO configuration
 			System.out.println(" will upload result to server with url ===" + url_string + "===");
 
@@ -288,14 +333,19 @@ public class HousenumberServerAPI {
 			    temptoutput.append("\r\n");
 			    temptoutput.append(evaluation.getJobname() + "\r\n");
 			    temptoutput.append("--" + boundary + "\r\n");
-			    temptoutput.append("Content-Disposition: form-data; name=\"result\"; filename=\"result.txt\"" + "\r\n");
+			    temptoutput.append("Content-Disposition: form-data; name=\"result\"; filename=\"result.txt.zip\"" + "\r\n");
 			    temptoutput.append("Content-Type: text/plain; charset=" + StandardCharsets.UTF_8.toString() + "\r\n");
+			    //temptoutput.append("Content-Type: application/zip" + "\r\n");
 			    temptoutput.append("\r\n");
-	            temptoutput.append(result_content + "\r\n");
+			    temptoutput.append(result_content);
+			    //temptoutput.append(zippedResultContent);
+	            temptoutput.append("\r\n");
 			    temptoutput.append("--" + boundary + "--" + "\r\n");
 			    int maxoutput = (temptoutput.toString().length() > 8000) ? 8000: temptoutput.toString().length();
-			    System.out.println("Upload-Request Start ===\n" + temptoutput.toString().substring(0, maxoutput) + "\n===");
-			    System.out.println("Upload-Request Ende ===\n" + temptoutput.toString().substring(temptoutput.toString().length() - 1000, temptoutput.toString().length()) + "\n===");
+			    //System.out.println("Upload-Request Start ===\n" + temptoutput.toString().substring(0, maxoutput) + "\n===");
+			    System.out.println("Upload-Result file length ===\n" + temptoutput.toString().length() + "\n===");
+			    int minoutput = (temptoutput.toString().length() > 1000) ? 1000: temptoutput.toString().length();
+			    //System.out.println("Upload-Request Ende ===\n" + temptoutput.toString().substring(minoutput, temptoutput.toString().length()) + "\n===");
 			    writer.println(temptoutput.toString());
 			} finally {
 			    if (writer != null) writer.close();
@@ -346,19 +396,114 @@ public class HousenumberServerAPI {
 	public HousenumberCollection ReadListFromServer(Evaluation evaluation) {
 		final HousenumberCollection housenumbers = new HousenumberCollection();
 
+		URL                url; 
+		BufferedReader     dis;
+		
+		try {
+			if(		(evaluation.getCountry().equals(""))
+				||	(evaluation.getMunicipality().equals(""))
+				)
+			{
+				return housenumbers;
+			}
+	
+			String urlString = serverUrl + "/getHousenumberlist";
 
-		if(		(evaluation.getCountry().equals(""))
-			||	(evaluation.getMunicipality().equals(""))
-			||	(evaluation.getJobname().equals(""))
-			)
-		{
+			url = new URL(urlString);
+			
+			HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+			connection.setRequestMethod("POST");
+			connection.setDoInput(true);
+			connection.setDoOutput(true);
+			connection.setUseCaches(false);
+			connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded; charset=utf-8");
+			connection.setRequestProperty("User-Agent", USER_AGENT);
+			connection.setRequestProperty("Content-Language", "en-US");
+
+			//urlConn.setRequestProperty("Accept-Encoding", "gzip, compress");
+
+	 
+			String urlParameters = "country=" +  URLEncoder.encode(evaluation.getCountry(),"UTF-8");
+			urlParameters += "&" + "municipality=" + URLEncoder.encode(evaluation.getMunicipality(), "UTF-8");
+			urlParameters += "&" + "subid=" + URLEncoder.encode(evaluation.getSubid(),"UTF-8");
+			urlParameters += "&" + "adminlevel=" + evaluation.getAdminLevel();
+			urlParameters += "&" + "jobname=" + URLEncoder.encode(evaluation.getJobname(),"UTF-8");
+			if(! evaluation.getOfficialkeysId().equals(""))
+				urlParameters += "&" + "officialkeysid=" + URLEncoder.encode(evaluation.getOfficialkeysId(),"UTF-8");
+	 
+			OutputStreamWriter writer = new OutputStreamWriter(connection.getOutputStream());
+			System.out.println("upload_string==="+urlParameters+"===");
+			writer.write(urlParameters);
+			writer.flush();
+	
+				
+			String inputline = "";
+			InputStream serverResponse = connection.getInputStream(); 
+	
+			Integer headeri = 1;
+			System.out.println("Header-Fields Ausgabe ...");
+			String responseContentEncoding = "";
+			while(connection.getHeaderFieldKey(headeri) != null) {
+				System.out.println("  Header # " + headeri 
+					+ ":  [" + connection.getHeaderFieldKey(headeri)
+					+ "] ===" + connection.getHeaderField(headeri) + "===");
+				if(connection.getHeaderFieldKey(headeri).equals("Content-Encoding"))
+					responseContentEncoding = connection.getHeaderField(headeri);
+				headeri++;
+			}
+	
+			//if(responseContentEncoding.equals("gzip")) {
+			//	dis = new BufferedReader(new InputStreamReader(new GZIPInputStream(serverResponse),"UTF-8"));
+			//} else {
+			dis = new BufferedReader(new InputStreamReader(serverResponse,"UTF-8"));
+			//}
+			housenumbers.housenumberlist = new StringBuffer();
+			while ((inputline = dis.readLine()) != null)
+			{
+				housenumbers.housenumberlist.append(inputline + "\n");
+				//System.out.println(inputline);
+				if(inputline.equals(""))
+					continue;
+				String linecolumns[] = inputline.split("\t");
+				if(inputline.indexOf("#") == 0) {
+//TODO interpret and/or store metadata into housenumbercollection instance
+					continue;
+				}
+					// should be possible not to set isHousenumberaddition_exactly
+				Housenumber acthousenumber = new Housenumber(false);
+				//linecolumns[0] "Subadminarea"
+				acthousenumber.setStrasse(linecolumns[1]);
+				acthousenumber.setHausnummer(linecolumns[2]);
+				if((linecolumns.length >= 4) && (! linecolumns[3].equals("")))
+					acthousenumber.setLonlat(linecolumns[3]);
+				if((linecolumns.length >= 5) && (! linecolumns[4].equals("")))
+					acthousenumber.setLonlat_source(linecolumns[4]);
+				if((linecolumns.length >= 6) && (! linecolumns[5].equals("")))
+					acthousenumber.setHousenumberComment(linecolumns[5]);
+				acthousenumber.setTreffertyp(Housenumber.Treffertyp.LIST_ONLY);
+				housenumbers.add_newentry(acthousenumber);
+			}
+			dis.close();
+//TODO dirty save as here, just for test purposes
+			String filename = configuration.application_datadir + File.separator + "housenumberlists"
+				+ File.separator + URLEncoder.encode(evaluation.getMunicipality(),"UTF-8") + ".txt";
+			PrintWriter uploadOutput = null;
+			uploadOutput = new PrintWriter(new BufferedWriter(new OutputStreamWriter(
+					new FileOutputStream(filename),StandardCharsets.UTF_8)));
+			uploadOutput.println(housenumbers.housenumberlist.toString());
+			uploadOutput.close();
+		}
+		catch (MalformedURLException mue) {
+			System.out.println("ERROR: MalformedURLException, Details ...");
+			mue.printStackTrace();
+			return housenumbers;
+		} 
+		catch (IOException ioe) {
+			System.out.println("ERROR: IOException, Details ...");
+			ioe.printStackTrace();
 			return housenumbers;
 		}
-if(1 == 1) {
-	System.out.println("FEHLER FEHLER: ReadListFromDB has not been coded yet, CANCEL");
-	return housenumbers;
-}
-	
+		
 		return housenumbers;
 	}
 }

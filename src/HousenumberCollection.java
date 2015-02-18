@@ -41,6 +41,7 @@ public class HousenumberCollection {
 	public String polygonAsString = "";
 	public int adminLevel = 0;
 	private int cache_count = 0;
+	public StringBuffer housenumberlist = new StringBuffer();
 	private boolean housenumberadditionCaseSentity = true;
 	
 	
@@ -90,7 +91,6 @@ public class HousenumberCollection {
 	public int count_unchanged() {
 		int count = 0;
     	for (Map.Entry<String,Housenumber> entry : cache.entrySet()) {
-			String key = entry.getKey();
 			Housenumber housenumber = entry.getValue();
 			if(housenumber.getstate().equals("unchanged"))
 				count++;
@@ -101,7 +101,6 @@ public class HousenumberCollection {
 	public int countTreffertyp(Housenumber.Treffertyp treffertyp) {
 		int count = 0;
     	for (Map.Entry<String,Housenumber> entry : cache.entrySet()) {
-			String key = entry.getKey();
 			Housenumber housenumber = entry.getValue();
 			if(housenumber.getTreffertyp() == treffertyp)
 				count++;
@@ -126,8 +125,7 @@ public class HousenumberCollection {
 		Housenumber newentry = new Housenumber(this.ishousenumberadditionCaseSentity());
 		newentry.set(in_newentry);
 		newentry.setstate("new");
-		newentry.toStringlong();
-		cache.put(in_newentry.getListKey(), in_newentry);
+		cache.put(newentry.getListKey(), newentry);
 		cache_count++;
 	}
 
@@ -184,7 +182,6 @@ public class HousenumberCollection {
 		System.out.println("at start of merge ...");
 		System.out.println("   count list housenumbers: " + cache.size());
 		System.out.println("   count osm housenumbers: " + osmhousenumbers.cache.size());
-		int count = 0;
 		for (Map.Entry<String,Housenumber> entry : cache.entrySet()) {
 			String thiskey = entry.getKey();
 			Housenumber listhousenumber = entry.getValue();
@@ -284,7 +281,6 @@ public class HousenumberCollection {
 		outputbuffer.append("#Para EvaluationTime=" + evaluation.evaluationtime + "\n");
 		
 		for (Map.Entry<String,Housenumber> entry : cache.entrySet()) {
-			String thiskey = entry.getKey();
 			Housenumber housenumber = entry.getValue();
 
 			actrecord = housenumber.getStrasse() + fieldseparator
@@ -479,7 +475,6 @@ public class HousenumberCollection {
 		
 		
 		for (Map.Entry<String,Housenumber> entry : cache.entrySet()) {
-			String thiskey = entry.getKey();
 			Housenumber housenumber = entry.getValue();
 
 			laststreetname = actstreetname;
