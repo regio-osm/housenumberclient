@@ -48,7 +48,7 @@ import de.regioosm.housenumbers.Applicationconfiguration;
 
 
 public class HousenumberServerAPI {
-	Applicationconfiguration configuration = new Applicationconfiguration();
+	Applicationconfiguration configuration = new Applicationconfiguration("./");
 	static final String USER_AGENT = "regio-osm.de Housenumber Evaluation Client, contact: strassenliste@diesei.de";
 
 	private String serverUrl = "";

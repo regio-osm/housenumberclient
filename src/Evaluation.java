@@ -146,7 +146,7 @@ public class Evaluation {
 
 
 	public static void main(String args[]) {
-		Applicationconfiguration configuration = new Applicationconfiguration();
+		Applicationconfiguration configuration = new Applicationconfiguration("./");
 
 		java.util.Date programStart = new java.util.Date();
 		
