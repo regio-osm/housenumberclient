@@ -5,10 +5,14 @@ import java.io.FileReader;
 import java.io.Reader;
 import java.util.Properties;
 import java.util.logging.Level;
+import java.util.logging.Logger;
+
+
+//import de.regioosm.housenumberserverAPI.String;
 
 
 public class Applicationconfiguration {
-
+	
 	public String housenumberseverAPIprotocol = "http";
 	public String housenumberseverAPIhost = "regio-osm.de";
 	public String housenumberseverAPIport = "80";
@@ -34,10 +38,21 @@ public class Applicationconfiguration {
 	public Level logging_file_level = Level.FINEST;
 	
 	public Applicationconfiguration (String path) {
-			// get some configuration infos
-		String configuration_filename =  path + ".." + File.separator + ".." + File.separator + "housenumberclient.properties";
+		String configuration_filename = "";
 
-	try {
+		final String dir = System.getProperty("user.dir");
+		System.out.println("current dir = " + dir);
+
+		// get some configuration infos
+		if(path.length() >= 2) {
+			configuration_filename =  path;
+			if(configuration_filename.lastIndexOf(File.separator) != (configuration_filename.length()-1))
+					configuration_filename += File.separator;
+			configuration_filename += "housenumberclient.properties";
+		} else
+			configuration_filename =  dir + File.separator + ".." + File.separator + "housenumberclient.properties";
+
+		try {
 			Reader reader = new FileReader( configuration_filename );
 			Properties prop = new Properties();
 			prop.load( reader );

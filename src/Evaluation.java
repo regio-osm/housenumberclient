@@ -5,8 +5,16 @@
  * 	
 */
 
+import java.io.IOException;
 import java.util.Date;
 import java.util.List;
+import java.util.logging.ConsoleHandler;
+import java.util.logging.FileHandler;
+import java.util.logging.Formatter;
+import java.util.logging.Handler;
+import java.util.logging.Level;
+import java.util.logging.LogRecord;
+import java.util.logging.Logger;
 
 import de.regioosm.housenumbers.Applicationconfiguration;
 
@@ -22,6 +30,7 @@ public class Evaluation {
 	public Long evaluationtime = 0L;
 	public Long osmtime = 0L;
 	public HousenumberCollection housenumberlist = new HousenumberCollection();
+	public static final Logger logger = Logger.getLogger(Evaluation.class.getName());
 
 
 	public void initialize() {
@@ -146,13 +155,7 @@ public class Evaluation {
 
 
 	public static void main(String args[]) {
-		Applicationconfiguration configuration = new Applicationconfiguration("./");
 
-		java.util.Date programStart = new java.util.Date();
-		
-		for (int lfdnr = 0; lfdnr < args.length; lfdnr++) {
-			System.out.println("args[" + lfdnr + "] ===" + args[lfdnr] + "===");
-		}
 		if ((args.length >= 1) && (args[0].equals("-h"))) {
 			System.out.println("German help available with -hDE");
 			System.out.println("");
@@ -206,6 +209,9 @@ public class Evaluation {
 			return;
 		}
 
+
+		java.util.Date programStart = new java.util.Date();
+
 		String parameterCountry = "Bundesrepublik Deutschland";
 		String parameterAdminHierarchy = "";
 		String parameterMunicipiality = "";
@@ -218,7 +224,7 @@ public class Evaluation {
 			// client call parameters
 		String parameterImportdateiname = "";
 		String parameterFieldSeparator = "\t";
-		Integer parameterOSMRelationid = 0;
+		Long parameterOSMRelationid = 0L;
 		
 		if (args.length >= 1) {
 			int argsOkCount = 0;
@@ -274,7 +280,7 @@ public class Evaluation {
 				}
 
 				if (args[argsi].equals("-relationid")) {
-					parameterOSMRelationid = Integer.parseInt(args[argsi + 1]);
+					parameterOSMRelationid = Long.parseLong(args[argsi + 1]);
 					argsOkCount += 2;
 				}
 				if (args[argsi].equals("-columnseparator")) {
@@ -296,6 +302,53 @@ public class Evaluation {
 			return;
 		}
 
+		String relativePathToApplicationConfiguration = "";
+		if(! parameterImportdateiname.equals("")) {
+			relativePathToApplicationConfiguration = "./";
+		}
+		Applicationconfiguration configuration = new Applicationconfiguration(relativePathToApplicationConfiguration);
+
+		try {
+			Handler handler = new ConsoleHandler();
+			handler.setFormatter(new Formatter() {
+		         public String format(LogRecord rec) {
+		            StringBuffer buf = new StringBuffer(1000);
+		            //buf.append(new java.util.Date());
+		            //buf.append(" ");
+		            buf.append(rec.getLevel());
+		            buf.append(": ");
+		            buf.append(formatMessage(rec));
+		            buf.append("\n");
+		            return buf.toString();
+		         }
+			});
+			handler.setLevel(configuration.logging_console_level);
+			logger.addHandler(handler);
+			FileHandler fhandler = new FileHandler(configuration.logging_filename);
+			fhandler.setFormatter(new Formatter() {
+		         public String format(LogRecord rec) {
+		            StringBuffer buf = new StringBuffer(1000);
+		            buf.append(new java.util.Date());
+		            buf.append(" ");
+		            buf.append(rec.getLevel());
+		            buf.append(" ");
+		            buf.append(formatMessage(rec));
+		            buf.append("\n");
+		            return buf.toString();
+		         }
+			});
+			fhandler.setLevel(configuration.logging_file_level);
+			logger.addHandler(fhandler);
+			logger.setLevel(configuration.logging_console_level);
+		} catch (IOException e) {
+			System.out.println("Fehler beim Logging-Handler erstellen, ...");
+			System.out.println(e.toString());
+		}
+
+		for (int lfdnr = 0; lfdnr < args.length; lfdnr++) {
+			logger.log(Level.FINE, "args[" + lfdnr + "] ===" + args[lfdnr] + "===");
+		}
+
 		parameterAdminHierarchy = parameterAdminHierarchy.replace("*", "%");
 		parameterMunicipiality = parameterMunicipiality.replace("*", "%");
 		parameterJobname = parameterJobname.replace("*", "%");
@@ -308,7 +361,6 @@ public class Evaluation {
 		if(! parameterCountry.equals("") && (! parameterMunicipiality.equals("")))
 			evaluation.setMunicipality(parameterCountry, parameterMunicipiality);
 		evaluation.setHousenumberAdditionCaseSensity(parameterHousenumbersCaseSensity);
-		System.out.println("Number of housenumberlist entries at start: " + evaluation.housenumberlist.length());
 
 		HousenumberCollection list_housenumbers = new HousenumberCollection();
 		HousenumberCollection osm_housenumbers = new HousenumberCollection();
@@ -320,8 +372,8 @@ public class Evaluation {
 			list_housenumbers = hnrreader.ReadListFromFile(evaluation, parameterImportdateiname, parameterFieldSeparator, parameterHousenumbersCaseSensity);
 			osm_housenumbers = osmreader.ReadDataFromOverpass(evaluation, parameterOSMRelationid);
 			evaluated_housenumbers = list_housenumbers.merge(osm_housenumbers);
-			evaluated_housenumbers.printhtml("test.html");
-			System.out.println("Number of housenumberlist entries after load of official housenumber list: "
+			evaluated_housenumbers.printhtml("evaluation.html");
+			logger.log(Level.INFO, "Number of housenumberlist entries after load of official housenumber list: "
 				+ evaluation.housenumberlist.length() + "   " + evaluation.housenumberlist.count_unchanged());
 		} else {
 	
@@ -341,7 +393,7 @@ public class Evaluation {
 	
 			//jobs = hnrserver.findJobs("Schweiz","Zürich", "Zürich", "*");
 			
-			System.out.println("Number of Jobs received from Server: " + jobs.size());
+			logger.log(Level.INFO, "Number of Jobs received from Server: " + jobs.size());
 			
 			java.util.Date jobstart = new java.util.Date();
 			java.util.Date jobend = new java.util.Date();
@@ -350,7 +402,7 @@ public class Evaluation {
 	
 		
 				if((parameterMaxJobs != -1) && (parameterMaxJobs < (jobindex + 1))) {
-					System.out.println("maximum number of jobs, as specified, arrived. Stop further processing");
+					logger.log(Level.INFO, "maximum number of jobs, as specified, arrived. Stop further processing");
 					break;
 				}
 				if(parameterMaxMinutes != -1) {
@@ -358,10 +410,10 @@ public class Evaluation {
 					Long maxTime = programStart.getTime() + parameterMaxMinutes * 60 * 1000;
 					java.util.Date now = new java.util.Date();
 					if(now.getTime() > maxTime) {
-						System.out.println("maximum time, as specified, arrived. Stop further processing");
+						logger.log(Level.INFO, "maximum time, as specified, arrived. Stop further processing");
 						break;
 					} else {
-						System.out.println("Info: specified limit of minutes not arrived, useable minutes to work: " + Math.round((maxTime - now.getTime())/60/1000));
+						logger.log(Level.FINEST, "Info: specified limit of minutes not arrived, useable minutes to work: " + Math.round((maxTime - now.getTime())/60/1000));
 					}
 				}
 	
@@ -374,7 +426,7 @@ public class Evaluation {
 				
 				
 				jobstart = new java.util.Date();
-				System.out.println("start working on job " + actjob.toString() + "; started at " + jobstart.toString());
+				logger.log(Level.INFO, "start working on job " + actjob.toString() + "; started at " + jobstart.toString());
 	
 				evaluation.setHousenumberAdditionCaseSensity(false);
 
@@ -387,17 +439,16 @@ public class Evaluation {
 				list_housenumbers.clear();
 				//list_housenumbers = hnrreader.ReadListFromDB(evaluation);
 				list_housenumbers = hnrserver.ReadListFromServer(evaluation);
-				System.out.println("Number of official housenumbers: " + list_housenumbers.length());
+				logger.log(Level.INFO, "Number of official housenumbers: " + list_housenumbers.length());
 				if(list_housenumbers.length() == 0) {
-					System.out.println("Warning: job will be ignored, because no official housenumbers found for job " + actjob.toString() + "; started at " + jobstart.toString());
+					logger.log(Level.WARNING, "Warning: job will be ignored, because no official housenumbers found for job " + actjob.toString() + "; started at " + jobstart.toString());
 					continue;
 				}
 				java.util.Date dbloadend = new java.util.Date();
 				java.util.Date overpassloadstart = new java.util.Date();
 				osm_housenumbers.clear();
 				osm_housenumbers = osmreader.ReadDataFromOverpass(evaluation, relationid);
-				System.out.println("Number of OSM housenumbers: " + osm_housenumbers.length());
-				//evaluation.osmtime will be set inside readdatafromoverpass
+				logger.log(Level.INFO, "Number of OSM housenumbers: " + osm_housenumbers.length());
 				evaluation.evaluationtime = overpassloadstart.getTime();
 				java.util.Date overpassloadend = new java.util.Date();
 				java.util.Date mergedatastart = new java.util.Date();
@@ -405,32 +456,30 @@ public class Evaluation {
 				evaluated_housenumbers = list_housenumbers.merge(osm_housenumbers);
 				java.util.Date mergedataend = new java.util.Date();
 				evaluated_housenumbers.printhtml("test.html");
-				System.out.println("Number of housenumberlist entries after load of official housenumber list: "
-					+ evaluation.housenumberlist.length() + "   " + evaluation.housenumberlist.count_unchanged());
 	
 				int lfdnr = 0;
 				java.util.Date uploadstart = null;
 				java.util.Date uploadend = null;
 				//while(lfdnr < 1000) {
 					lfdnr++;
-					System.out.println("upload Nr. " + lfdnr);
+					logger.log(Level.FINE, "upload Nr. " + lfdnr);
 					uploadstart = new java.util.Date();
 					hnrserver.writeEvaluationToServer(evaluation, evaluated_housenumbers);
 					uploadend = new java.util.Date();
 				//}
-				System.out.println("time for db load time in sek: " + (dbloadend.getTime() - dbloadstart.getTime())/1000);
-				System.out.println("time for overpass load time in sek: " + (overpassloadend.getTime() - overpassloadstart.getTime())/1000);
-				System.out.println("time for internal merge time in sek: " + (mergedataend.getTime() - mergedatastart.getTime())/1000);
-				System.out.println("time for result upload time in sek: " + (uploadend.getTime() - uploadstart.getTime())/1000);
+				logger.log(Level.INFO, "time for db load time in sek: " + (dbloadend.getTime() - dbloadstart.getTime())/1000);
+				logger.log(Level.INFO, "time for overpass load time in sek: " + (overpassloadend.getTime() - overpassloadstart.getTime())/1000);
+				logger.log(Level.INFO, "time for internal merge time in sek: " + (mergedataend.getTime() - mergedatastart.getTime())/1000);
+				logger.log(Level.INFO, "time for result upload time in sek: " + (uploadend.getTime() - uploadstart.getTime())/1000);
 	
 				jobend = new java.util.Date();
-				System.out.println("finished working on job " + actjob.toString() + "; ended at " + jobend.toString() + " duration in sec: " 
+				logger.log(Level.INFO, "finished working on job " + actjob.toString() + "; ended at " + jobend.toString() + " duration in sec: " 
 					+ (jobend.getTime() - jobstart.getTime())/1000);
 			}
 		}	// end of else case (client/serer mode)
 
 		java.util.Date programEnd = new java.util.Date();
-		System.out.println("Program finished at " + programEnd.toString() + " duration in sec: "
+		logger.log(Level.INFO, "Program finished at " + programEnd.toString() + ", Duration in sec: "
 			+ (programEnd.getTime() - programStart.getTime())/1000);
 	}
 }
