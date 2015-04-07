@@ -179,9 +179,9 @@ public class HousenumberCollection {
 	public HousenumberCollection merge(HousenumberCollection osmhousenumbers) {
 		HousenumberCollection mergedhousenumbers = new HousenumberCollection();
 
-		System.out.println("at start of merge ...");
-		System.out.println("   count list housenumbers: " + cache.size());
-		System.out.println("   count osm housenumbers: " + osmhousenumbers.cache.size());
+		System.out.print("Start of evaluation: ");
+		System.out.print("Number of OSM housenumbers: " + osmhousenumbers.cache.size());
+		System.out.println(", Number of official housenumbers: " + cache.size());
 		for (Map.Entry<String,Housenumber> entry : cache.entrySet()) {
 			String thiskey = entry.getKey();
 			Housenumber listhousenumber = entry.getValue();
@@ -208,8 +208,7 @@ public class HousenumberCollection {
 				mergedhousenumbers.add_newentry(osmhousenumber);
 			}
 		}
-		System.out.println("at end of merge ...");
-		System.out.println("   count merged housenumbers: " + mergedhousenumbers.cache.size());
+		System.out.println("End of evaluation: Number of merged housenumbers: " + mergedhousenumbers.cache.size());
     	return mergedhousenumbers;
 	}
 	
@@ -299,12 +298,37 @@ public class HousenumberCollection {
 	
 
 
+	private String auswerten(Integer anzahlIdentisch, Integer anzahlSoll) {
+		String abdeckung_class = "";
+
+		if (anzahlSoll > 0) {
+			Float abdeckung = (float) anzahlIdentisch / (float) anzahlSoll;
+			if (abdeckung == 1.0)
+				abdeckung_class = "abdeck_100";
+			else if (abdeckung >= 0.95 && abdeckung < 1.0)
+				abdeckung_class = "abdeck_95";
+			else if (abdeckung >= 0.85 && abdeckung < 0.95)
+				abdeckung_class = "abdeck_85";
+			else if (abdeckung >= 0.75 && abdeckung < 0.85)
+				abdeckung_class = "abdeck_75";
+			else if (abdeckung >= 0.5 && abdeckung < 0.75)
+				abdeckung_class = "abdeck_50";
+			else if (abdeckung >= 0.25 && abdeckung < 0.5)
+				abdeckung_class = "abdeck_25";
+			else if (abdeckung >= 0.0 && abdeckung < 0.25)
+				abdeckung_class = "abdeck_0";
+			else
+				abdeckung_class = "abdeck_invalid";
+		} else {
+			abdeckung_class = "abdeck_0";
+		}
+		return abdeckung_class;
+	}
+	
 	public void printhtml(String filename) {
 
-		System.out.println("at start of merge ...");
-		System.out.println("   count housenumbers: " + cache.size());
-
 		StringBuffer outputbuffer = new StringBuffer();
+		String abdeckung_class = "";
 		
 		
 
@@ -484,9 +508,10 @@ public class HousenumberCollection {
 				// output all informations about last streetname
 				actoutputline += "<tr>";
 				actoutputline += "<td>" + laststreetname + "</td>";
-				if((count_identical + count_listonly) != 0)
-					actoutputline += "<td>" + 100 * count_identical / (count_identical + count_listonly) + "</td>";
-				else
+				if((count_identical + count_listonly) != 0) {
+					abdeckung_class = auswerten(count_identical, (count_listonly + count_identical));
+					actoutputline += "<td class='" + abdeckung_class + "'>" + 100 * count_identical / (count_identical + count_listonly) + "</td>";
+				} else
 					actoutputline += "<td>-</td>";
 				actoutputline += "<td>" + (count_identical + count_listonly) + "</td>";
 				actoutputline += "<td>" + count_identical + "</td>";
@@ -567,9 +592,11 @@ public class HousenumberCollection {
 			actoutputline = "";
 			actoutputline += "<tr>";
 			actoutputline += "<td>" + actstreetname + "</td>";
-			if((count_identical + count_listonly) != 0)
-				actoutputline += "<td>" + 100 * count_identical / (count_identical + count_listonly) + "</td>";
-			else
+			if((count_identical + count_listonly) != 0) {
+				abdeckung_class = auswerten(count_identical, (count_listonly + count_identical));
+				actoutputline += "<td class='" + abdeckung_class + "'>" + 100 * count_identical / (count_identical + count_listonly) + "</td>";
+			
+			} else
 				actoutputline += "<td>-</td>";
 			actoutputline += "<td>" + (count_identical + count_listonly) + "</td>";
 			actoutputline += "<td>" + count_identical + "</td>";
@@ -592,9 +619,10 @@ public class HousenumberCollection {
 		actoutputline += "<tfoot>";
 		actoutputline += "<tr>";
 		actoutputline += "<td>Summe</td>";
-		if((count_total_identical + count_total_listonly) != 0)
-			actoutputline += "<td>" + 100 * count_total_identical / (count_total_identical + count_total_listonly) + "</td>";
-		else
+		if((count_total_identical + count_total_listonly) != 0) {
+			abdeckung_class = auswerten(count_total_identical, (count_total_listonly + count_total_identical));
+			actoutputline += "<td class='" + abdeckung_class + "'>" + 100 * count_total_identical / (count_total_identical + count_total_listonly) + "</td>";		
+		} else
 			actoutputline += "<td>-</td>";
 		actoutputline += "<td>" + (count_total_identical + count_total_listonly) + "</td>";
 		actoutputline += "<td>" + count_total_identical + "</td>";

@@ -28,7 +28,11 @@ import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.zip.GZIPInputStream;
+
+
 
 
 
@@ -67,9 +71,10 @@ import java.text.ParseException;
 
 public class OsmDataReader {
 	private static final int HAUSNUMMERSORTIERBARLENGTH = 4;
+	private static final Logger logger = Evaluation.logger;
 
 	Applicationconfiguration configuration = new Applicationconfiguration("./");
-	
+
 	String dbconnection = "";
 	String dbusername = "";
 	String dbpassword = "";
@@ -118,7 +123,7 @@ public class OsmDataReader {
 						hausnummern_array.add(hausnummerindex.toString());
 				}
 			} catch( NumberFormatException e) {
-				System.out.println("Error during parsing text to integer, text was ==="+hausnummertext+"===");
+				logger.log(Level.WARNING, "Error during parsing text to integer, text was ==="+hausnummertext+"===");
 				e.printStackTrace();
 			}
 
@@ -158,6 +163,7 @@ public class OsmDataReader {
 			+ "out meta;";
 
 		String url_string = "";
+		File osmFile = null;
 
 		try {
 			String overpass_query_encoded = URLEncoder.encode(overpass_query, "UTF-8");
@@ -165,26 +171,26 @@ public class OsmDataReader {
 			overpass_query_encoded = overpass_query_encoded.replace("%29",")");
 			overpass_query_encoded = overpass_query_encoded.replace("+","%20");
 			url_string = overpass_url + overpass_queryurl + overpass_query_encoded;
-			System.out.println("url_string ===" + url_string + "===");
-			
-			
+			logger.log(Level.INFO, "Request for Overpass-API to get housenumbers ...");
+			logger.log(Level.FINE, "Overpass Request URL to get housenumbers ===" + url_string + "===");
+
 			StringBuffer osmresultcontent = new StringBuffer();
 			url = new URL(url_string);
-			
+
 			urlConn = url.openConnection(); 
 			urlConn.setDoInput(true); 
 			urlConn.setUseCaches(false);
-//			urlConn.setRequestProperty("User-Agent", "regio-osm.de Housenumber Evaluation Client, contact: strassenliste@diesei.de");
+			urlConn.setRequestProperty("User-Agent", "regio-osm.de Housenumber Evaluation Client, contact: strassenliste@diesei.de");
 			urlConn.setRequestProperty("Accept-Encoding", "gzip, compress");
 			
 			String inputline = "";
 			InputStream overpassResponse = urlConn.getInputStream(); 
 
 			Integer headeri = 1;
-			System.out.println("Header-Fields Ausgabe ...");
+			logger.log(Level.FINE, "Overpass URL Response Header-Fields ...");
 			String responseContentEncoding = "";
 			while(urlConn.getHeaderFieldKey(headeri) != null) {
-				System.out.println("  Header # " + headeri 
+				logger.log(Level.FINE, "  Header # " + headeri 
 					+ ":  [" + urlConn.getHeaderFieldKey(headeri)
 					+ "] ===" + urlConn.getHeaderField(headeri) + "===");
 				if(urlConn.getHeaderFieldKey(headeri).equals("Content-Encoding"))
@@ -210,17 +216,20 @@ public class OsmDataReader {
 			
 			String filename = configuration.application_datadir + File.separator + "overpassdownload" 
 				+ File.separator + downloadtime + ".osm";
-			System.out.println("overpassdownloaddatei ===" + filename + "===");
 
-			File outputfile = new File(filename);
-			PrintWriter osmOutput = new PrintWriter(new BufferedWriter(new OutputStreamWriter(
-					new FileOutputStream(filename),StandardCharsets.UTF_8)));
-			osmOutput.println(osmresultcontent.toString());
-			osmOutput.close();
-			
+			try {
+				osmFile = new File(filename);
+				PrintWriter osmOutput = new PrintWriter(new BufferedWriter(new OutputStreamWriter(
+						new FileOutputStream(filename),StandardCharsets.UTF_8)));
+				osmOutput.println(osmresultcontent.toString());
+				osmOutput.close();
+				logger.log(Level.INFO, "Saved Overpass OSM Data Content to file " + filename);
+			} catch (IOException ioe) {
+				logger.log(Level.SEVERE, "Error, when tried to save Overpass OSM Data in file " + filename);
+				logger.log(Level.SEVERE, ioe.toString());
+			}
 				// ok, osm result is in osmresultcontent.toString() available
-			System.out.println("Dateilänge nach optionalem Entpacken in Bytes: " + osmresultcontent.toString().length());
-			//System.out.println("Dateioutput ===" + osmresultcontent.toString() + "===");
+			logger.log(Level.FINE, "Dateilänge nach optionalem Entpacken in Bytes: " + osmresultcontent.toString().length());
 
 			int firstnodepos = osmresultcontent.toString().indexOf("<node");
 			if(firstnodepos != -1) {
@@ -235,9 +244,8 @@ public class OsmDataReader {
 						try {
 							evaluation.osmtime = utc_formatter.parse(osm_base_value).getTime();
 						} catch (ParseException parseerror) {
-							System.out.println("Errordue to getting api-request (ioexception). url was ==="+url_string+"===");					
-							System.out.println(parseerror.toString());
-							parseerror.printStackTrace();
+							logger.log(Level.SEVERE, "Couldn't parse OSM DB timestamp from Overpass OSM Data, timestamp was ===" + osm_base_value + "===");					
+							logger.log(Level.SEVERE, parseerror.toString());
 						}
 					}
 				}
@@ -250,13 +258,12 @@ public class OsmDataReader {
 				@Override
 				public void release() {
 					// TODO Auto-generated method stub
-					System.out.println("hallo Sink.release   aktiv !!!");
-					
+					logger.log(Level.FINEST, "hallo Sink.release   aktiv !!!");
 				}
 				
 				@Override
 				public void complete() {
-					//System.out.println("hallo Sink.complete  aktiv:    nodes #"+nodes_count+"   ways #"+ways_count+"   relations #"+relations_count);
+					logger.log(Level.FINEST, "hallo Sink.complete  aktiv:    nodes #"+nodes_count+"   ways #"+ways_count+"   relations #"+relations_count);
 
 						// loop over all osm node objects
 	    	    	for (Map.Entry<Long, Node> nodemap: gibmirnodes.entrySet()) {
@@ -273,28 +280,35 @@ public class OsmDataReader {
 			        			address_street = tag.getValue();
 			        		if(tag.getKey().equals("addr:housenumber"))
 			        			address_housenumber = tag.getValue();
+							logger.log(Level.FINEST,  "raw node with housenumber ===" + address_housenumber 
+									+ "=== in street ===" + address_street + "===, node id #" + objectid + "===");
 						}
-						if(		(! address_street.equals(""))
-							&& 	(! address_housenumber.equals(""))) {
-							Housenumber osmhousenumber = new Housenumber(evaluation.getHousenumberlist().ishousenumberadditionCaseSentity());
-							osmhousenumber.setOSMObjekt("node", objectid);
-							osmhousenumber.setStrasse(address_street);
-							osmhousenumber.set_osm_tag(keyvalues);
-							String objectlonlat = nodemap.getValue().getLongitude() + " " + nodemap.getValue().getLatitude();
-							osmhousenumber.setLonlat(objectlonlat);
-							osmhousenumber.setLonlat_source("OSM");
-							osmhousenumber.setTreffertyp(Housenumber.Treffertyp.OSM_ONLY);
-							
-							if(address_housenumber.indexOf(",") != -1)
-								address_housenumber = address_housenumber.replace(",",";");
-							String[] addressHousenumberParts = address_housenumber.split(";");
-							for(int tempi = 0; tempi < addressHousenumberParts.length; tempi++) {
-								String actSingleHousenumber = addressHousenumberParts[tempi].trim();
-								String[] temp_akthausnummer_single_array = Hausnummernbereich_aufloesen(actSingleHousenumber);
-								for(String tempsinglei: temp_akthausnummer_single_array) {
-									osmhousenumber.setHausnummer(tempsinglei);
-									housenumbers.add_newentry(osmhousenumber);
+						if(!address_housenumber.equals("")) {
+							if(!address_street.equals("")) {
+								Housenumber osmhousenumber = new Housenumber(evaluation.getHousenumberlist().ishousenumberadditionCaseSentity());
+								osmhousenumber.setOSMObjekt("node", objectid);
+								osmhousenumber.setStrasse(address_street);
+								osmhousenumber.set_osm_tag(keyvalues);
+								String objectlonlat = nodemap.getValue().getLongitude() + " " + nodemap.getValue().getLatitude();
+								osmhousenumber.setLonlat(objectlonlat);
+								osmhousenumber.setLonlat_source("OSM");
+								osmhousenumber.setTreffertyp(Housenumber.Treffertyp.OSM_ONLY);
+								
+								if(address_housenumber.indexOf(",") != -1)
+									address_housenumber = address_housenumber.replace(",",";");
+								String[] addressHousenumberParts = address_housenumber.split(";");
+								for(int tempi = 0; tempi < addressHousenumberParts.length; tempi++) {
+									String actSingleHousenumber = addressHousenumberParts[tempi].trim();
+									String[] temp_akthausnummer_single_array = Hausnummernbereich_aufloesen(actSingleHousenumber);
+									for(String tempsinglei: temp_akthausnummer_single_array) {
+										osmhousenumber.setHausnummer(tempsinglei);
+										housenumbers.add_newentry(osmhousenumber);
+										logger.log(Level.FINEST,  "add node with housenumber ===" + osmhousenumber.getHausnummer() 
+											+ "=== in street ===" + osmhousenumber.getStrasse() + "===, node id #" + osmhousenumber.getOsmId() + "===");
+									}
 								}
+							} else {
+								logger.log(Level.WARNING, "OSM Node has a housenumber, but no street or place Information and will be ignored. OSM-Node id is " + objectid);
 							}
 						}
 	    			}
@@ -321,29 +335,34 @@ public class OsmDataReader {
 			        		if(tag.getKey().equals("centroid_lat"))
 			        			centroid_lat = tag.getValue();
 		        		}
-						if(		(! address_street.equals(""))
-							&& 	(! address_housenumber.equals(""))) {
-							Housenumber osmhousenumber = new Housenumber(evaluation.getHousenumberlist().ishousenumberadditionCaseSentity());
-							osmhousenumber.setOSMObjekt("way", objectid);
-							osmhousenumber.setStrasse(address_street);
-							osmhousenumber.set_osm_tag(keyvalues);
-							osmhousenumber.setHausnummer(address_housenumber);
-							String objectlonlat = centroid_lon + " " + centroid_lat;
-							osmhousenumber.setLonlat(objectlonlat);
-//set centroid or something similar from way object   osmhousenumber.setLonlat(rs_objekte.getString("lonlat"));
-							osmhousenumber.setLonlat_source("OSM");
-							osmhousenumber.setTreffertyp(Housenumber.Treffertyp.OSM_ONLY);
-
-							if(address_housenumber.indexOf(",") != -1)
-								address_housenumber = address_housenumber.replace(",",";");
-							String[] addressHousenumberParts = address_housenumber.split(";");
-							for(int tempi = 0; tempi < addressHousenumberParts.length; tempi++) {
-								String actSingleHousenumber = addressHousenumberParts[tempi].trim();
-								String[] temp_akthausnummer_single_array = Hausnummernbereich_aufloesen(actSingleHousenumber);
-								for(String tempsinglei: temp_akthausnummer_single_array) {
-									osmhousenumber.setHausnummer(tempsinglei);
-									housenumbers.add_newentry(osmhousenumber);
+						if(!address_housenumber.equals("")) {
+							if(!address_street.equals("")) {
+								Housenumber osmhousenumber = new Housenumber(evaluation.getHousenumberlist().ishousenumberadditionCaseSentity());
+								osmhousenumber.setOSMObjekt("way", objectid);
+								osmhousenumber.setStrasse(address_street);
+								osmhousenumber.set_osm_tag(keyvalues);
+								osmhousenumber.setHausnummer(address_housenumber);
+								String objectlonlat = centroid_lon + " " + centroid_lat;
+								osmhousenumber.setLonlat(objectlonlat);
+	//set centroid or something similar from way object   osmhousenumber.setLonlat(rs_objekte.getString("lonlat"));
+								osmhousenumber.setLonlat_source("OSM");
+								osmhousenumber.setTreffertyp(Housenumber.Treffertyp.OSM_ONLY);
+	
+								if(address_housenumber.indexOf(",") != -1)
+									address_housenumber = address_housenumber.replace(",",";");
+								String[] addressHousenumberParts = address_housenumber.split(";");
+								for(int tempi = 0; tempi < addressHousenumberParts.length; tempi++) {
+									String actSingleHousenumber = addressHousenumberParts[tempi].trim();
+									String[] temp_akthausnummer_single_array = Hausnummernbereich_aufloesen(actSingleHousenumber);
+									for(String tempsinglei: temp_akthausnummer_single_array) {
+										osmhousenumber.setHausnummer(tempsinglei);
+										housenumbers.add_newentry(osmhousenumber);
+										logger.log(Level.FINEST,  "add way with housenumber ===" + osmhousenumber.getHausnummer() 
+												+ "=== in street ===" + osmhousenumber.getStrasse() + "===, way id #" + osmhousenumber.getOsmId() + "===");
+									}
 								}
+							} else {
+								logger.log(Level.WARNING, "OSM Way has a housenumber, but no street or place Information and will be ignored. OSM-Way id is " + objectid);
 							}
 						}
 	    			}
@@ -364,27 +383,32 @@ public class OsmDataReader {
 			        		if(tag.getKey().equals("addr:housenumber"))
 			        			address_housenumber = tag.getValue();
 						}
-						if(		(! address_street.equals(""))
-							&& 	(! address_housenumber.equals(""))) {
-							Housenumber osmhousenumber = new Housenumber(evaluation.getHousenumberlist().ishousenumberadditionCaseSentity());
-							osmhousenumber.setOSMObjekt("relation", objectid);
-							osmhousenumber.setStrasse(address_street);
-							osmhousenumber.set_osm_tag(keyvalues);
-							osmhousenumber.setHausnummer(address_housenumber);
-	//set centroid or something similar from way object   osmhousenumber.setLonlat(rs_objekte.getString("lonlat"));
-							osmhousenumber.setLonlat_source("OSM");
-							osmhousenumber.setTreffertyp(Housenumber.Treffertyp.OSM_ONLY);
-
-							if(address_housenumber.indexOf(",") != -1)
-								address_housenumber = address_housenumber.replace(",",";");
-							String[] addressHousenumberParts = address_housenumber.split(";");
-							for(int tempi = 0; tempi < addressHousenumberParts.length; tempi++) {
-								String actSingleHousenumber = addressHousenumberParts[tempi].trim();
-								String[] temp_akthausnummer_single_array = Hausnummernbereich_aufloesen(actSingleHousenumber);
-								for(String tempsinglei: temp_akthausnummer_single_array) {
-									osmhousenumber.setHausnummer(tempsinglei);
-									housenumbers.add_newentry(osmhousenumber);
+						if(!address_housenumber.equals("")) {
+							if(!address_street.equals("")) {
+								Housenumber osmhousenumber = new Housenumber(evaluation.getHousenumberlist().ishousenumberadditionCaseSentity());
+								osmhousenumber.setOSMObjekt("relation", objectid);
+								osmhousenumber.setStrasse(address_street);
+								osmhousenumber.set_osm_tag(keyvalues);
+								osmhousenumber.setHausnummer(address_housenumber);
+		//set centroid or something similar from way object   osmhousenumber.setLonlat(rs_objekte.getString("lonlat"));
+								osmhousenumber.setLonlat_source("OSM");
+								osmhousenumber.setTreffertyp(Housenumber.Treffertyp.OSM_ONLY);
+	
+								if(address_housenumber.indexOf(",") != -1)
+									address_housenumber = address_housenumber.replace(",",";");
+								String[] addressHousenumberParts = address_housenumber.split(";");
+								for(int tempi = 0; tempi < addressHousenumberParts.length; tempi++) {
+									String actSingleHousenumber = addressHousenumberParts[tempi].trim();
+									String[] temp_akthausnummer_single_array = Hausnummernbereich_aufloesen(actSingleHousenumber);
+									for(String tempsinglei: temp_akthausnummer_single_array) {
+										osmhousenumber.setHausnummer(tempsinglei);
+										housenumbers.add_newentry(osmhousenumber);
+										logger.log(Level.FINEST,  "add relation with housenumber ===" + osmhousenumber.getHausnummer() 
+												+ "=== in street ===" + osmhousenumber.getStrasse() + "===, relation id #" + osmhousenumber.getOsmId() + "===");
+									}
 								}
+							} else {
+								logger.log(Level.WARNING, "OSM Relation has a housenumber, but no street or place Information and will be ignored. OSM-Relation id is " + objectid);
 							}
 						}
 	    			}
@@ -392,8 +416,6 @@ public class OsmDataReader {
 				
 				@Override
 				public void initialize(Map<String, Object> metaData) {
-					// TODO Auto-generated method stub
-					//System.out.println("hallo Sink.initialize aktiv !!!");
 	    	    	for (Map.Entry<String, Object> daten: metaData.entrySet()) {
 	    				String key = daten.getKey();
 	    				Object tags = daten.getValue();
@@ -402,7 +424,6 @@ public class OsmDataReader {
 				
 				@Override
 				public void process(EntityContainer entityContainer) {
-					//System.out.println("hallo Sink.process  aktiv:    nodes #"+nodes_count+"   ways #"+ways_count+"   relations #"+relations_count);
 
 			        Entity entity = entityContainer.getEntity();
 			        if (entity instanceof Node) {
@@ -475,17 +496,16 @@ public class OsmDataReader {
 				    			gibmirrelations.put(entity.getId(), relation);
 						}
 
-						if(! relationType.equals("associatedStreet")) {
-							System.out.println("Relation is not of type");
+						if(		! relationType.equals("associatedStreet")
+							&& 	! relationType.equals("multipolygon")) {
+							logger.log(Level.WARNING, "Relation is not of type associatedStreet, instead ===" + relationType + "===, OSM-Id ===" + entity.getId() + "===");
 							return;
 			        	}
-						if(relationName.equals("")) {
-							System.out.println("Relation has no name Tag, will be ignored");
+						if(		relationType.equals("associatedStreet")
+							&&	(relationName.equals(""))) {
+							logger.log(Level.WARNING, "Relation has no name Tag, will be ignored, OSM-Id ===" + entity.getId() + "===");
 							return;
 			        	}
-
-						//System.out.println("  Anzahl Member: "+relmembers.size());
-
 
 			        	for(int memberi = 0; memberi < relmembers.size(); memberi++) {
 			        		RelationMember actmember = relmembers.get(memberi);
@@ -494,13 +514,15 @@ public class OsmDataReader {
 
 			        		//System.out.println("relation member ["+memberi+"]  Typ: "+memberType+"   ==="+actmember.toString()+"===   Role ==="+actmember.getMemberRole()+"===");
 
-			        		if(actmember.getMemberRole().equals("street"))		// ignore relation member with role street
+			        		if(actmember.getMemberRole().equals("street")) {		// ignore relation member with role street
+								logger.log(Level.WARNING, "Relation is of type=street, will be ignored, OSM-Id ===" + entity.getId() + "===");
 			        			continue;
+			        		}
 
 			        		if (EntityType.Node.equals(memberType)) {
 			    				if (availableNodes.get(memberId)) {
-			    					System.out.println("in Relation Member vom Type   NODE enthalten  ==="+gibmirnodes.get(memberId).toString()+"===");
-					        		System.out.println("  Hier die Tags des Node:  "+gibmirnodes.get(memberId).getTags().toString()+"===");
+			    					logger.log(Level.INFO, "in Relation Member vom Type   NODE enthalten  ==="+gibmirnodes.get(memberId).toString()+"===");
+			    					logger.log(Level.INFO, "  Hier die Tags des Node:  "+gibmirnodes.get(memberId).getTags().toString()+"===");
 					        		Collection<Tag> nodetags = gibmirnodes.get(memberId).getTags();
 									for (Tag tag: nodetags) {
 					        			//System.out.println("Tag [" + tag.getKey() + "] ==="+tag.getValue()+"===");
@@ -538,18 +560,14 @@ public class OsmDataReader {
 										//System.out.println(" Node # " + lfdnr + "    id: " + actnode.getId() + "    lon: " + actnode.getLongitude() + "   lat: "+actnode.getLatitude());
 										lfdnr++;
 									}
-
 									/*
 									WayGeometryBuilder waygeombuilder = new WayGeometryBuilder(NodeLocationStoreType.TempFile);
 									//LineString linestring = waygeombuilder.createWayLinestring(actway);
 									LineString linestring = waygeombuilder.createLinestring(points);
 									System.out.println("erstellter Linestring ==="+linestring.toString()+"===");
 									 */
-
-						    		
 			    				}
 			    			}
-			        	
 			        	}
 			        }
 				}
@@ -570,7 +588,8 @@ public class OsmDataReader {
 			    out.close();
 			} catch (IOException e) {
 			}	
-			osmfilereader = new XmlReader(tempfile, true, CompressionMethod.None);
+			osmfilereader = new XmlReader(osmFile, true, CompressionMethod.None);
+//			osmfilereader = new XmlReader(tempfile, true, CompressionMethod.None);
 
 			osmfilereader.setSink(sinkImplementation);
 
@@ -581,29 +600,25 @@ public class OsmDataReader {
 		        readerThread.join();
 			}
 		} catch (OsmosisRuntimeException osmosiserror) {
-			System.out.println("es folgt ein osmosis runtime fehler ...");
-			osmosiserror.printStackTrace();
+			logger.log(Level.SEVERE, "Osmosis runtime Error ...");
+			logger.log(Level.SEVERE, osmosiserror.toString());
 	    } catch (InterruptedException e) {
 	        /* do nothing */
 		} catch (MalformedURLException mue) {
-			System.out.println("Error due to getting api-request (malformedurlexception). url was ==="+url_string+"===");					
-			System.out.println(mue.toString());
-			String local_messagetext = "MalformedURLException: URL-Request was ==="+url_string+"=== and got Trace ==="+mue.toString()+"===";
+			logger.log(Level.SEVERE, "Overpass API request produced a malformed Exception, Request URL was ===" + url_string + "===, Details follows ...");					
+			logger.log(Level.SEVERE, mue.toString());
 			return housenumbers;
 		} catch (IOException ioe) {
-			System.out.println("Error due to getting api-request (ioexception). url was ==="+url_string+"===");					
-			System.out.println(ioe.toString());
-			String local_messagetext = "IOException: URL-Request was ==="+url_string+"=== and got Trace ==="+ioe.toString()+"===";
+			logger.log(Level.SEVERE, "Overpass API request produced an Input/Output Exception, Request URL was ===" + url_string + "===, Details follows ...");					
+			logger.log(Level.SEVERE, ioe.toString());
 			return housenumbers;
 		}
-		
 		return housenumbers;
 	}
 
 
 	public HousenumberCollection ReadListFromDB(Evaluation evaluation) {
 		final HousenumberCollection housenumbers = new HousenumberCollection();
-
 
 		if(		(dbconnection.equals("")) 
 			||	(dbusername.equals(""))
@@ -616,7 +631,7 @@ public class OsmDataReader {
 			return housenumbers;
 		}
 if(1 == 1) {
-	System.out.println("FEHLER FEHLER: ReadListFromDB has not been coded yet, CANCEL");
+	logger.log(Level.SEVERE, "method ReadListFromDB has not been coded yet, CANCEL");
 	return housenumbers;
 }
 	

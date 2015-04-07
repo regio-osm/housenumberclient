@@ -7,6 +7,8 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 
 
@@ -22,6 +24,7 @@ import java.sql.Statement;
 
 public class HousenumberlistReader {
 	private static final int HAUSNUMMERSORTIERBARLENGTH = 4;
+	private static final Logger logger = Evaluation.logger;
 	
 	String dbconnection = "";
 	String dbusername = "";
@@ -53,6 +56,8 @@ public class HousenumberlistReader {
 		try {
 			Class.forName("org.postgresql.Driver");
 		} catch (ClassNotFoundException e) {
+			logger.log(Level.SEVERE, "Failed to load postgres DB-Driver, Details follows ...");
+			logger.log(Level.SEVERE, e.toString());
 			e.printStackTrace();
 			return housenumbers;
 		}
@@ -108,6 +113,7 @@ public class HousenumberlistReader {
 			sqlqueryofficialhousenumbers  += " AND sh.stadt_id = s.id";
 			sqlqueryofficialhousenumbers  += " AND sh.strasse_id = str.id";
 			sqlqueryofficialhousenumbers += " ORDER BY correctorder(strasse), hausnummer_sortierbar;";
+			logger.log(Level.FINE, "SQL-Query to get all list housenumber entries ===" + sqlqueryofficialhousenumbers + "===");
 			Statement queryofficialhousenumbersStmt = conHousenumbers.createStatement();
 			ResultSet rsqueryofficialhousenumbers = queryofficialhousenumbersStmt.executeQuery(sqlqueryofficialhousenumbers);
 	
@@ -162,7 +168,6 @@ public class HousenumberlistReader {
 	public HousenumberCollection ReadListFromFile(Evaluation evaluation, String localfilename, String filecolumnseparator, boolean housenumberexactly) {
 		final HousenumberCollection housenumbers = new HousenumberCollection();
 
-		
 		String fieldSeparator = "\t";
 		if(! filecolumnseparator.equals(""))
 			fieldSeparator = filecolumnseparator;
@@ -173,10 +178,7 @@ public class HousenumberlistReader {
 			String dateizeile;
 			long zeilenr = 0;
 
-			String strasseVorher = "";
-			int strassenanzahl = 0;
 			boolean geocoordindatesavailable = false;
-			long strasseId = 0;
 			int spaltenindexStadt = -1;
 			int spaltenindexAgs = -1;
 			int spaltenindexStrasse = 0;
@@ -208,6 +210,7 @@ public class HousenumberlistReader {
 				}
 				if (dateizeile.indexOf("#") == 0) {
 					if (zeilenr == 1L) {
+						logger.log(Level.FINE, "First comment line, should have column header fields, line is ===" + dateizeile + "===");						
 						dateizeile = dateizeile.substring(1);
 						String[] kopfspalten = dateizeile.split(fieldSeparator);
 						for (int spaltei = 0; spaltei < kopfspalten.length; spaltei++) {
@@ -258,29 +261,29 @@ public class HousenumberlistReader {
 							}
 						}
 
-						System.out.print("Kopfzeile analysiert ...");
-						System.out.print("      Spalte-Stadt: " + spaltenindexStadt);
-						System.out.print("      Spalte-Stadtid: " + spaltenindexAgs);
-						System.out.print("      Spalte-Straße: " + spaltenindexStrasse);
+						logger.log(Level.INFO, "Kopfzeile analysiert ...");
+						logger.log(Level.INFO, "      Spalte-Stadt: " + spaltenindexStadt);
+						logger.log(Level.INFO, "      Spalte-Stadtid: " + spaltenindexAgs);
+						logger.log(Level.INFO, "      Spalte-Straße: " + spaltenindexStrasse);
 						if(spaltenindexPostcode != -1)
-							System.out.print("  Spalte-Postcode: " + spaltenindexPostcode);
-						System.out.print("  Spalte-Hausnummer: " + spaltenindexHausnummer);
+							logger.log(Level.INFO, "  Spalte-Postcode: " + spaltenindexPostcode);
+						logger.log(Level.INFO, "  Spalte-Hausnummer: " + spaltenindexHausnummer);
 						if(spaltenindexHausnummerzusatz != -1)
-							System.out.print("  Spalte-Hausnummerzusatz: " + spaltenindexHausnummerzusatz);
+							logger.log(Level.INFO, "  Spalte-Hausnummerzusatz: " + spaltenindexHausnummerzusatz);
 						if(spaltenindexHausnummerzusatz2 != -1)
-							System.out.print("  Spalte-Hausnummerzusatz2: " + spaltenindexHausnummerzusatz2);
-						System.out.println("   Spalte-Subid: " + spaltenindexSubid);
+							logger.log(Level.INFO, "  Spalte-Hausnummerzusatz2: " + spaltenindexHausnummerzusatz2);
+						logger.log(Level.INFO, "   Spalte-Subid: " + spaltenindexSubid);
 						if(spaltenindexLaengengrad != -1)
-							System.out.println("   Spalte-Längengrad: " + spaltenindexLaengengrad);
+							logger.log(Level.INFO, "   Spalte-Längengrad: " + spaltenindexLaengengrad);
 						if(spaltenindexBreitengrad != -1)
-							System.out.println("   Spalte-Breitengrad: " + spaltenindexBreitengrad);
+							logger.log(Level.INFO, "   Spalte-Breitengrad: " + spaltenindexBreitengrad);
 					} else {
-						System.out.println("Dateizeile #" + zeilenr + "  war sonstige Kommentarzeile ===" + dateizeile + "===");
+						logger.log(Level.FINE, "Dateizeile #" + zeilenr + "  war sonstige Kommentarzeile ===" + dateizeile + "===");
 					}
 					continue;
 				}
 
-				System.out.println("Dateizeile # " + zeilenr + " ===" + dateizeile + "===");
+				logger.log(Level.FINEST, "Dateizeile # " + zeilenr + " ===" + dateizeile + "===");
 
 				String[] spalten = dateizeile.split("\t");
 
@@ -289,7 +292,7 @@ public class HousenumberlistReader {
 				if((spalten.length > spaltenindexStadt) && (spaltenindexStadt != -1)) {
 					stadt = spalten[spaltenindexStadt].trim();
 					if( (! stadt.equals(stadt_zuletzt)) && (! stadt_zuletzt.equals(""))) {
-						System.out.println("WARNING: more than one municipality found in file. Only first municipality was used for imported, rest of file will be ignored");
+						logger.log(Level.WARNING, "more than one municipality found in file. Only first municipality was used for imported, rest of file will be ignored");
 						return housenumbers;
 					}
 				}
@@ -299,12 +302,13 @@ public class HousenumberlistReader {
 				if((spalten.length > spaltenindexAgs) && (spaltenindexAgs != -1)) {
 					ags = spalten[spaltenindexAgs].trim();
 					if( (! ags.equals(ags_zuletzt)) && (! ags_zuletzt.equals(""))) {
-						System.out.println("WARNING: more than one municipality found in file. Only first municipality was used for imported, rest of file will be ignored");
+						logger.log(Level.WARNING, "WARNING: more than one municipality found in file. Only first municipality was used for imported, rest of file will be ignored");
 						return housenumbers;
 					}
 				}
 
 				Housenumber newhousenumber = new Housenumber(housenumberexactly);
+				newhousenumber.setTreffertyp(Housenumber.Treffertyp.LIST_ONLY);
 				
 				strasse = "";
 				if((spalten.length > spaltenindexStrasse) && (spaltenindexStrasse != -1)) {
@@ -379,14 +383,12 @@ public class HousenumberlistReader {
 				if (strasse.equals("") || hausnummer.equals("")) {
 					continue;
 				}
-				System.out.print("# " + zeilenr + "  Straße ===" + strasse);
-				System.out.print(";   subid ===" + subid + "===");
-				System.out.println(";   Hausnummer ===" + hausnummer + "===");
+				//System.out.print("# " + zeilenr + "  Straße ===" + strasse);
+				//System.out.print(";   subid ===" + subid + "===");
+				//System.out.println(";   Hausnummer ===" + hausnummer + "===");
 
-				strasseId = 0L;
 				housenumbers.add_newentry(newhousenumber);
 			}
-
 			filereader.close();
 
 	    } catch (FileNotFoundException e) {
