@@ -21,6 +21,7 @@ import java.util.List;
 import java.nio.charset.StandardCharsets;
 
 
+
 import de.regioosm.housenumbers.Applicationconfiguration;
 /*
  * ATTENTION: upload of large files (at 01/2015 max 10 MB) can fails.
@@ -48,7 +49,7 @@ import de.regioosm.housenumbers.Applicationconfiguration;
 
 
 public class HousenumberServerAPI {
-	Applicationconfiguration configuration = new Applicationconfiguration("./");
+	Applicationconfiguration configuration = new Applicationconfiguration("");
 	static final String USER_AGENT = "regio-osm.de Housenumber Evaluation Client, contact: strassenliste@diesei.de";
 
 	private String serverUrl = "";
@@ -393,9 +394,7 @@ public class HousenumberServerAPI {
 	}
 
 
-	public HousenumberCollection ReadListFromServer(Evaluation evaluation) {
-		final HousenumberCollection housenumbers = new HousenumberCollection();
-
+	public HousenumberCollection ReadListFromServer(Evaluation evaluation, HousenumberCollection housenumbers) {
 		URL                url; 
 		BufferedReader     dis;
 		
@@ -467,11 +466,15 @@ public class HousenumberServerAPI {
 				String linecolumns[] = inputline.split("\t");
 				if(inputline.indexOf("#") == 0) {
 //TODO interpret and/or store metadata into housenumbercollection instance
+//TODO interpret first comment line as column header with fieldnames for each columnu for flexibility file format
 					continue;
 				}
+				if(linecolumns.length < 2)
+					continue;
 					// should be possible not to set isHousenumberaddition_exactly
-				Housenumber acthousenumber = new Housenumber(false);
+				Housenumber acthousenumber = new Housenumber(housenumbers);
 				//linecolumns[0] "Subadminarea"
+				
 				acthousenumber.setStrasse(linecolumns[1]);
 				acthousenumber.setHausnummer(linecolumns[2]);
 				if((linecolumns.length >= 4) && (! linecolumns[3].equals("")))
@@ -480,6 +483,8 @@ public class HousenumberServerAPI {
 					acthousenumber.setLonlat_source(linecolumns[4]);
 				if((linecolumns.length >= 6) && (! linecolumns[5].equals("")))
 					acthousenumber.setHousenumberComment(linecolumns[5]);
+				if((linecolumns.length >= 7) && (! linecolumns[6].equals("")))
+					acthousenumber.setPostcode(linecolumns[6]);
 				acthousenumber.setTreffertyp(Housenumber.Treffertyp.LIST_ONLY);
 				housenumbers.add_newentry(acthousenumber);
 			}

@@ -36,6 +36,9 @@ import java.util.zip.GZIPInputStream;
 
 
 
+
+
+
 import de.regioosm.housenumbers.Applicationconfiguration;
 
 import org.openstreetmap.osmosis.core.OsmosisRuntimeException;
@@ -73,7 +76,7 @@ public class OsmDataReader {
 	private static final int HAUSNUMMERSORTIERBARLENGTH = 4;
 	private static final Logger logger = Evaluation.logger;
 
-	Applicationconfiguration configuration = new Applicationconfiguration("./");
+	Applicationconfiguration configuration = new Applicationconfiguration("");
 
 	String dbconnection = "";
 	String dbusername = "";
@@ -134,12 +137,11 @@ public class OsmDataReader {
 	}
 
 
-	public HousenumberCollection ReadDataFromOverpass(final Evaluation evaluation, Long relationsid) {
+	public HousenumberCollection ReadDataFromOverpass(final Evaluation evaluation, final HousenumberCollection housenumbers, Long relationsid) {
 		URL                url; 
 		URLConnection      urlConn; 
 		BufferedReader     dis;
 
-		final HousenumberCollection housenumbers = new HousenumberCollection();
 
 		nodes_count = 0;
 		ways_count = 0;
@@ -270,6 +272,7 @@ public class OsmDataReader {
 	    				Long objectid = nodemap.getKey();
 	    				Collection<Tag> tags = nodemap.getValue().getTags();
 		        		String address_street = "";
+		        		String address_postcode = "";
 		        		String address_housenumber = "";
 		        		HashMap<String,String> keyvalues = new HashMap<String,String>();
 		        		for (Tag tag: tags) {
@@ -278,6 +281,8 @@ public class OsmDataReader {
 			        		if(		tag.getKey().equals("addr:street")
 			        			||	tag.getKey().equals("addr:place"))
 			        			address_street = tag.getValue();
+			        		if(tag.getKey().equals("addr:postcode"))
+			        			address_postcode = tag.getValue().replace(" ", "");
 			        		if(tag.getKey().equals("addr:housenumber"))
 			        			address_housenumber = tag.getValue();
 							logger.log(Level.FINEST,  "raw node with housenumber ===" + address_housenumber 
@@ -285,9 +290,10 @@ public class OsmDataReader {
 						}
 						if(!address_housenumber.equals("")) {
 							if(!address_street.equals("")) {
-								Housenumber osmhousenumber = new Housenumber(evaluation.getHousenumberlist().ishousenumberadditionCaseSentity());
+								Housenumber osmhousenumber = new Housenumber(housenumbers);
 								osmhousenumber.setOSMObjekt("node", objectid);
 								osmhousenumber.setStrasse(address_street);
+								osmhousenumber.setPostcode(address_postcode);
 								osmhousenumber.set_osm_tag(keyvalues);
 								String objectlonlat = nodemap.getValue().getLongitude() + " " + nodemap.getValue().getLatitude();
 								osmhousenumber.setLonlat(objectlonlat);
@@ -318,6 +324,7 @@ public class OsmDataReader {
 	    				Long objectid = waymap.getKey();
 		        		Collection<Tag> tags = waymap.getValue().getTags();
 		        		String address_street = "";
+		        		String address_postcode = "";
 		        		String address_housenumber = "";
 		        		String centroid_lon = "";
 		        		String centroid_lat = "";
@@ -328,6 +335,8 @@ public class OsmDataReader {
 			        		if(		tag.getKey().equals("addr:street")
 			        			||	tag.getKey().equals("addr:place"))
 			        			address_street = tag.getValue();
+			        		if(tag.getKey().equals("addr:postcode"))
+			        			address_postcode = tag.getValue().replace(" ", "");
 			        		if(tag.getKey().equals("addr:housenumber"))
 			        			address_housenumber = tag.getValue();
 			        		if(tag.getKey().equals("centroid_lon"))
@@ -337,9 +346,10 @@ public class OsmDataReader {
 		        		}
 						if(!address_housenumber.equals("")) {
 							if(!address_street.equals("")) {
-								Housenumber osmhousenumber = new Housenumber(evaluation.getHousenumberlist().ishousenumberadditionCaseSentity());
+								Housenumber osmhousenumber = new Housenumber(housenumbers);
 								osmhousenumber.setOSMObjekt("way", objectid);
 								osmhousenumber.setStrasse(address_street);
+								osmhousenumber.setPostcode(address_postcode);
 								osmhousenumber.set_osm_tag(keyvalues);
 								osmhousenumber.setHausnummer(address_housenumber);
 								String objectlonlat = centroid_lon + " " + centroid_lat;
@@ -372,6 +382,7 @@ public class OsmDataReader {
 	    				Long objectid = relationmap.getKey();
 		        		Collection<Tag> tags = relationmap.getValue().getTags();
 		        		String address_street = "";
+		        		String address_postcode = "";
 		        		String address_housenumber = "";
 		        		HashMap<String,String> keyvalues = new HashMap<String,String>();
 		        		for (Tag tag: tags) {
@@ -380,14 +391,17 @@ public class OsmDataReader {
 			        		if(		tag.getKey().equals("addr:street")
 			        			||	tag.getKey().equals("addr:place"))
 			        			address_street = tag.getValue();
+			        		if(tag.getKey().equals("addr:postcode"))
+			        			address_postcode = tag.getValue().replace(" ", "");
 			        		if(tag.getKey().equals("addr:housenumber"))
 			        			address_housenumber = tag.getValue();
 						}
 						if(!address_housenumber.equals("")) {
 							if(!address_street.equals("")) {
-								Housenumber osmhousenumber = new Housenumber(evaluation.getHousenumberlist().ishousenumberadditionCaseSentity());
+								Housenumber osmhousenumber = new Housenumber(housenumbers);
 								osmhousenumber.setOSMObjekt("relation", objectid);
 								osmhousenumber.setStrasse(address_street);
+								osmhousenumber.setPostcode(address_postcode);
 								osmhousenumber.set_osm_tag(keyvalues);
 								osmhousenumber.setHausnummer(address_housenumber);
 		//set centroid or something similar from way object   osmhousenumber.setLonlat(rs_objekte.getString("lonlat"));
@@ -677,7 +691,7 @@ if(1 == 1) {
 				tempAkthausnummer = rsqueryofficialhousenumbers.getString("hausnummer_sortierbar");
 				tempAkthausnummer = tempAkthausnummer.substring(1, HAUSNUMMERSORTIERBARLENGTH);
 
-				Housenumber newofficialhousenumber = new Housenumber(evaluation.getHousenumberlist().ishousenumberadditionCaseSentity());
+				Housenumber newofficialhousenumber = new Housenumber(housenumbers);
 
 				newofficialhousenumber.setStrasse(rsqueryofficialhousenumbers.getString("strasse"));
 				newofficialhousenumber.setHausnummer(rsqueryofficialhousenumbers.getString("hausnummer"));
