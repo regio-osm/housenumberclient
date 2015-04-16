@@ -119,7 +119,7 @@ public class HousenumberlistReader {
 	
 			while (rsqueryofficialhousenumbers.next()) {
 
-				Housenumber newofficialhousenumber = new Housenumber(evaluation.getHousenumberlist().ishousenumberadditionCaseSentity());
+				Housenumber newofficialhousenumber = new Housenumber(housenumbers);
 
 				newofficialhousenumber.setStrasse(rsqueryofficialhousenumbers.getString("strasse"));
 				newofficialhousenumber.setHausnummer(rsqueryofficialhousenumbers.getString("hausnummer"));
@@ -307,7 +307,7 @@ public class HousenumberlistReader {
 					}
 				}
 
-				Housenumber newhousenumber = new Housenumber(housenumberexactly);
+				Housenumber newhousenumber = new Housenumber(housenumbers);
 				newhousenumber.setTreffertyp(Housenumber.Treffertyp.LIST_ONLY);
 				
 				strasse = "";

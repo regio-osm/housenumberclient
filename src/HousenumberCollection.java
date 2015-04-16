@@ -43,8 +43,16 @@ public class HousenumberCollection {
 	private int cache_count = 0;
 	public StringBuffer housenumberlist = new StringBuffer();
 	private boolean housenumberadditionCaseSentity = true;
+	private FieldsForUniqueAddress fieldsForUniqueAddress = FieldsForUniqueAddress.STREET_HOUSENUMBER;
+	public TreeMap<String,String> alternatecache = new TreeMap<String,String>();
+	private FieldsForUniqueAddress alternateFieldsForUniqueAddress = null;
 	
-	
+
+	public enum FieldsForUniqueAddress {
+		STREET_HOUSENUMBER, POSTCODE_HOUSENUMBER, STREET_POSTCODE_HOUSENUMBER;
+	}
+
+
 	
 	private void workcache_debug(String outputtext) {
 		PrintWriter debug_output = null;
@@ -79,6 +87,22 @@ public class HousenumberCollection {
 		this.housenumberadditionCaseSentity = housenumberadditionCaseSentity;
 	}
 
+	public void setFieldsForUniqueAddress(FieldsForUniqueAddress setfields) {
+		fieldsForUniqueAddress = setfields;
+	}
+
+	public void setAlternateFieldsForUniqueAddress(FieldsForUniqueAddress setfields) {
+		alternateFieldsForUniqueAddress = setfields;
+	}
+
+	public FieldsForUniqueAddress getFieldsForUniqueAddress() {
+		return fieldsForUniqueAddress;
+	}
+
+	public FieldsForUniqueAddress getAlternateFieldsForUniqueAddress() {
+		return alternateFieldsForUniqueAddress;
+	}
+
 	public int length() {
 		return cache_count;
 	}
@@ -86,8 +110,11 @@ public class HousenumberCollection {
 	public void clear() {
 		cache.clear();
 		cache_count = 0;
+		fieldsForUniqueAddress = FieldsForUniqueAddress.STREET_HOUSENUMBER;
+		alternatecache.clear();
+		alternateFieldsForUniqueAddress = null;
 	}
-	
+
 	public int count_unchanged() {
 		int count = 0;
     	for (Map.Entry<String,Housenumber> entry : cache.entrySet()) {
@@ -111,56 +138,40 @@ public class HousenumberCollection {
 
 	// set an entry, which is from database table, so not a real new entry
 	public Housenumber add_dbentry(Housenumber entry) {
-		Housenumber newentry = new Housenumber(this.ishousenumberadditionCaseSentity());
+		String primaryListkey = "";
+		Housenumber newentry = new Housenumber(this);
 		newentry.set(entry);
 		newentry.setstate("dbloaded");
 		newentry.toStringlong();
-		cache.put(entry.getListKey(), entry);
+		primaryListkey = entry.getListKey();
+		cache.put(primaryListkey, entry);
 		cache_count++;
+		if(this.getAlternateFieldsForUniqueAddress() != null)
+			alternatecache.put(entry.getAlternateListKey(), primaryListkey);
 		return newentry;
 	}
 
 		// add a real new entry
 	public void add_newentry( Housenumber in_newentry) {
-		Housenumber newentry = new Housenumber(this.ishousenumberadditionCaseSentity());
+		String primaryListkey = "";
+		Housenumber newentry = new Housenumber(this);
 		newentry.set(in_newentry);
 		newentry.setstate("new");
-		cache.put(newentry.getListKey(), newentry);
+		primaryListkey = in_newentry.getListKey();
+		cache.put(primaryListkey, in_newentry);
 		cache_count++;
+		if(this.getAlternateFieldsForUniqueAddress() != null)
+			alternatecache.put(in_newentry.getAlternateListKey(), primaryListkey);
 	}
 
 	
-	private Housenumber find_entry_in_cache(Housenumber findentry) {
-
+	private Housenumber findEntryInCache(Housenumber findentry) {
 		if(cache.get(findentry.getListKey()) != null)
 			return cache.get(findentry.getListKey());
 		else
 			return null;
 	}
-	
-	/**
-	 * search the findentry housenumber object, if it is known in Workcache and optionaly return the found object.
-	 * The only one optionaly attribute in findentry can be treffertyp (set "" to ignore)
-	 * @param findentry: housenumber object, which will be searched in structure, if available
-	 * @return:			 the found housenumber object (only one) or null
-	 */
-	public  Housenumber ___WILL_NOT_BE_USED____get_entry_in_cache(Housenumber findentry) {	// public version of find_entry, but slightly different works
-		if(cache.get(findentry.getListKey()) != null)
-			return cache.get(findentry.getListKey());
-		else
-			return null;
 
-/*		for(int entryindex = 0; entryindex < this.length(); entryindex++) {
-			if(		(this.cache[entryindex].getStrasse() == findentry.getStrasse()) 
-				&&	(this.cache[entryindex].getHausnummerNormalisiert().equals(findentry.getHausnummerNormalisiert()))
-				&&	((findentry.getTreffertyp() == Workcache_Entry.Treffertyp.UNSET) || (this.cache[entryindex].getTreffertyp() == findentry.getTreffertyp()))	// treffertyp optional if set
-				) {
-				return this.cache[entryindex];
-			}
-		}
-		return null;
-*/
-	}
 
 	
 	/**
@@ -174,11 +185,33 @@ public class HousenumberCollection {
 		else
 			return null;
 	}
-	
 
-	public HousenumberCollection merge(HousenumberCollection osmhousenumbers) {
+
+	/**
+	 * get the cacheentry object with the given alternate index
+	 * @param index: alternate index of the cacheentry
+	 * @return:			 the found housenumber object (only one) or null
+	 */
+	public Housenumber alternateEntry(String alternateListkey) {	// public version of find_entry, but slightly different works
+		if(cache.get(alternateListkey) != null)
+			return cache.get(alternateListkey);
+		else
+			return null;
+	}
+
+	/**
+	 * Main methode to compare two collection of housenumberlists. Normally, one list is the official list from municipality and the other are osm housenumbers in same area.
+	 * 
+	 * @param osmhousenumbers: second list of housenumbers, which will be compared to instance housenumberlist
+	 * @param fieldsAtLeastIdenticallyForMerge: if the standard methode to compare a housenumber in both lists fail (with property value of fieldForUniqueAddress in this instance),
+	 * 		then take this second value for comparing. For example, in Netherland normally try to compare Street, Postcode and housenumber.
+	 * 		But if doesn't hit, check at least Postcode and housenumber, because this is enough for a unique address in Netherland.
+	 * @return: the merged housenumber list
+	 */
+	public HousenumberCollection merge(HousenumberCollection osmhousenumbers, FieldsForUniqueAddress fieldsAtLeastIdenticallyForMerge) {
 		HousenumberCollection mergedhousenumbers = new HousenumberCollection();
 
+		mergedhousenumbers.setFieldsForUniqueAddress(this.getFieldsForUniqueAddress());
 		System.out.print("Start of evaluation: ");
 		System.out.print("Number of OSM housenumbers: " + osmhousenumbers.cache.size());
 		System.out.println(", Number of official housenumbers: " + cache.size());
@@ -195,7 +228,23 @@ public class HousenumberCollection {
 				newhousenumber.setLonlat_source(foundosmhousenumber.getLonlat_source());
 				mergedhousenumbers.add_newentry(newhousenumber);
 			} else {
-				mergedhousenumbers.add_newentry(listhousenumber);
+				if(this.getAlternateFieldsForUniqueAddress() == null) {
+					mergedhousenumbers.add_newentry(listhousenumber);
+				} else {
+					String thisAlternateKey = listhousenumber.getAlternateListKey();
+					if(osmhousenumbers.alternatecache.containsKey(thisAlternateKey)) {
+						String primaryKey = osmhousenumbers.alternatecache.get(thisAlternateKey);
+						Housenumber foundosmhousenumber = osmhousenumbers.cache.get(primaryKey);
+						newhousenumber.setTreffertyp(Housenumber.Treffertyp.IDENTICAL);
+						newhousenumber.set_osm_tag_rawvalues(foundosmhousenumber);
+						newhousenumber.setOSMObjekt(foundosmhousenumber.getOsmObjektart(), foundosmhousenumber.getOsmId());
+						newhousenumber.setLonlat(foundosmhousenumber.getLonlat());
+						newhousenumber.setLonlat_source(foundosmhousenumber.getLonlat_source());
+						mergedhousenumbers.add_newentry(newhousenumber);
+					} else {
+						mergedhousenumbers.add_newentry(listhousenumber);
+					}
+				}
 			}
 		}
 			// ok, now all single list housenumbers and identical housenumbers are in mergedhousenumbers
@@ -219,7 +268,7 @@ public class HousenumberCollection {
 		if(debug_output) System.out.println("start of .update of class Workcache ...");
 
 		if(debug_output) System.out.println("in .update of class Workcache: find entry ...");
-		Housenumber found_entry = find_entry_in_cache(updateentry);
+		Housenumber found_entry = findEntryInCache(updateentry);
 		if(debug_output) {  
 			if(found_entry == null)
 				System.out.println("found? no");
@@ -261,6 +310,7 @@ public class HousenumberCollection {
 
 		if(includeHeaderline) {
 			actrecord = "#Strasse" + fieldseparator
+					+	"Postcode" + fieldseparator
 					+	"Hausnummer" + fieldseparator
 					+	"Treffertyp" + fieldseparator
 					+	"OSMId" + fieldseparator
@@ -283,6 +333,7 @@ public class HousenumberCollection {
 			Housenumber housenumber = entry.getValue();
 
 			actrecord = housenumber.getStrasse() + fieldseparator
+				+	housenumber.getPostcode() + fieldseparator
 				+	housenumber.getHausnummer() + fieldseparator
 				+	housenumber.getTreffertypText() + fieldseparator
 				+	housenumber.getOsmId() + fieldseparator

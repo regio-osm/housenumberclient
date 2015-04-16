@@ -5,6 +5,8 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.logging.Logger;
+import java.util.logging.Level;
 
 
 /*
@@ -34,6 +36,7 @@ public class Housenumber {
 	private boolean isHousenumberaddition_exactly;
 	private long 	id = -1L;
 	private String	strasse = "";			// only valid for new objects
+	private String	postcode = "";
 	private String	hausnummer_sortierbar = "";
 	private String	hausnummer_normalisiert = "";
 	private Treffertyp treffertyp = Treffertyp.UNSET;
@@ -45,8 +48,13 @@ public class Housenumber {
 	private String  lonlat = "";
 	private String	lonlat_source = "";
 	private String  hausnummerkommentar = "";
+			// bad implementation, to set this field at every housenumber instance, but don't know how to get info from housenumbercollection instance
+	private HousenumberCollection.FieldsForUniqueAddress	fieldsForUniqueAddress = HousenumberCollection.FieldsForUniqueAddress.STREET_HOUSENUMBER;
+	private HousenumberCollection.FieldsForUniqueAddress	alternateFieldsForUniqueAddress = null;
 
 	private String	state = ""; // ""=not set; "untouched"=got from database, without updates; "updated"=updated, "deleted!; "added"=real new entry
+
+	private static final Logger logger = Evaluation.logger;
 
 	private void workcache_debug(String outputtext) {
 		PrintWriter debug_output = null;
@@ -64,8 +72,10 @@ public class Housenumber {
 	}
 		
 
-	public Housenumber(boolean isHousenumberaddition_exactly)  {
-		this.isHousenumberaddition_exactly = isHousenumberaddition_exactly;
+	public Housenumber(	HousenumberCollection collectioninstance)  {
+		this.isHousenumberaddition_exactly = collectioninstance.ishousenumberadditionCaseSentity();
+		this.fieldsForUniqueAddress = collectioninstance.getFieldsForUniqueAddress();
+		this.alternateFieldsForUniqueAddress = collectioninstance.getAlternateFieldsForUniqueAddress();
 	}
 	
 		/**
@@ -74,7 +84,31 @@ public class Housenumber {
 		 */
 //TODO in municipalities, where streetname and housenumber are not unique, one more value must be added, for example postcode
 	public String getListKey() {
-		return this.getStrasse().toLowerCase() + this.getHausnummerSortierbar().toLowerCase();
+		String listkey = "";
+
+		if(this.fieldsForUniqueAddress.compareTo(HousenumberCollection.FieldsForUniqueAddress.STREET_HOUSENUMBER) == 0)
+			listkey = this.getStrasse().toLowerCase() + this.getHausnummerSortierbar().toLowerCase();
+		else if(this.fieldsForUniqueAddress.compareTo(HousenumberCollection.FieldsForUniqueAddress.STREET_POSTCODE_HOUSENUMBER) == 0)
+			listkey = this.getStrasse().toLowerCase()  + this.getPostcode().toLowerCase() + this.getHausnummerSortierbar().toLowerCase();
+		else if(this.fieldsForUniqueAddress.compareTo(HousenumberCollection.FieldsForUniqueAddress.POSTCODE_HOUSENUMBER) == 0)
+			listkey = this.getPostcode().toLowerCase() + this.getHausnummerSortierbar().toLowerCase();
+		return listkey;
+	}
+
+
+	public String getAlternateListKey() {
+		String listkey = "";
+
+		if(this.alternateFieldsForUniqueAddress == null)
+			return "";
+
+		if(this.alternateFieldsForUniqueAddress.compareTo(HousenumberCollection.FieldsForUniqueAddress.STREET_HOUSENUMBER) == 0)
+			listkey = this.getStrasse().toLowerCase() + this.getHausnummerSortierbar().toLowerCase();
+		else if(this.alternateFieldsForUniqueAddress.compareTo(HousenumberCollection.FieldsForUniqueAddress.STREET_POSTCODE_HOUSENUMBER) == 0)
+			listkey = this.getStrasse().toLowerCase()  + this.getPostcode().toLowerCase() + this.getHausnummerSortierbar().toLowerCase();
+		else if(this.alternateFieldsForUniqueAddress.compareTo(HousenumberCollection.FieldsForUniqueAddress.POSTCODE_HOUSENUMBER) == 0)
+			listkey = this.getPostcode().toLowerCase() + this.getHausnummerSortierbar().toLowerCase();
+		return listkey;
 	}
 
 
@@ -96,7 +130,7 @@ public class Housenumber {
 			list_invalid_params = list_invalid_params.replace("||",",");
 			list_invalid_params = list_invalid_params.replace("|","");
 			if(morethanoneerror) {
-				System.out.println("Adresseobjekt ohne gültiges addr:housenuber ::: id: "+id
+				logger.log(Level.WARNING, "Adresseobjekt ohne gültiges addr:housenuber ::: id: "+id
 						+ "   hausnummer_sortierbar: "+hausnummer_sortierbar
 						+ "   treffertyp: "+treffertyp+"   hausnummer: "+hausnummer+"   osm_tag: "+osm_tag
 						+ "   osm_objektart: "+osm_objektart+"   osm_id: "+osm_id
@@ -111,6 +145,7 @@ public class Housenumber {
 				
 		this.id = entry.id;
 		this.strasse = entry.strasse;
+		this.postcode = entry.postcode;
 		this.hausnummer_sortierbar = entry.hausnummer_sortierbar;
 		this.setTreffertyp(entry.treffertyp);
 		setHausnummer(entry.hausnummer);
@@ -130,6 +165,7 @@ public class Housenumber {
 		if(this != null) {
 			entryastext = "Id: "+ this.id + 
 				"\tStrasse: " + this.strasse +
+				"\tPostcode: " + this.postcode + 
 				"\tHnr: " + this.hausnummer +
 				"\tTreffertyp: " + this.getTreffertypText() +
 				"\tOSM-Tag: " + this.osm_tag +
@@ -147,6 +183,7 @@ public class Housenumber {
 		if(this != null) {
 			entryastext = "Id: "+ this.id + 
 				"\tStrasse: " + this.strasse +
+				"\tPostcode: " + this.postcode + 
 				"\tHnr: " + this.hausnummer +
 				"\tHnr_sortiert: " + this.hausnummer_sortierbar + 
 				"\tTreffertyp: " + this.getTreffertypText() +
@@ -206,7 +243,7 @@ public class Housenumber {
 					else if(in_entry.state.equals("dbloaded")) {
 						// nothing to do
 					} else {
-						System.out.println("in_entry.state evtl. noch übernehmen ==="+in_entry.state+"===");
+						//TODO System.out.println("in_entry.state evtl. noch übernehmen ==="+in_entry.state+"===");
 					}
 				} else if( in_entry.getTreffertyp().compareTo(Treffertyp.LIST_ONLY) == 0) {
 					this.setTreffertyp(Treffertyp.LIST_ONLY);
@@ -221,10 +258,10 @@ public class Housenumber {
 					else if(in_entry.state.equals("dbloaded")) {
 						// nothing to do
 					} else {
-						System.out.println("in_entry.state evtl. noch übernehmen ==="+in_entry.state+"===");
+						//TODO System.out.println("in_entry.state evtl. noch übernehmen ==="+in_entry.state+"===");
 					}
 				} else {
-					System.out.println("ERROR ERROR: in update Workcache_Entry unexpected Treffertypes: this: "+this.getTreffertypText()+"   in_entry: "+in_entry.getTreffertypText()+"===");
+					logger.log(Level.SEVERE, "ERROR ERROR: in update Workcache_Entry unexpected Treffertypes: this: "+this.getTreffertypText()+"   in_entry: "+in_entry.getTreffertypText()+"===");
 				}
 				changes_string += "|(0)" + "treffertyp" + " from ==="+oldtreffertyp+"=== to ==="+this.getTreffertypText()+"===" + "|";
 				entry_changed = true;
@@ -299,7 +336,7 @@ public class Housenumber {
 							entry_changed = true;
 						}
 					} else {
-						System.out.println("no update of Entry object, because prio of new object is not better ("+in_entry.osm_tag_prio+") than existing one ("+this.osm_tag_prio+")");
+						logger.log(Level.FINEST, "no update of Entry object, because prio of new object is not better ("+in_entry.osm_tag_prio+") than existing one ("+this.osm_tag_prio+")");
 					}
 				}	// end of this and in_entry are both OSM objects - if(this.treffertyp.equals("o")) {
 				else if(this.getTreffertyp().compareTo(Treffertyp.LIST_ONLY) == 0) {
@@ -316,21 +353,18 @@ public class Housenumber {
 				}
 			}	// end of else of change treffertyp
 
-			System.out.println("check, if state will be changed, actual state ==="+this.getstate()+"===, change-Flag is "+entry_changed);
+			logger.log(Level.FINEST, "check, if state will be changed, actual state ==="+this.getstate()+"===, change-Flag is "+entry_changed);
 			if(entry_changed) {
 				if( ! this.getstate().equals("new")) {		// if state is new and now a second object was found, don't change to changed
-					System.out.println("changing state from ==="+this.getstate()+"=== to ===changed===");
+					logger.log(Level.FINEST, "changing state from ==="+this.getstate()+"=== to ===changed===");
 					this.setstate("changed");
 				}
 			} else {
 				if(this.getstate().equals("dbloaded")) {
-					System.out.println("changing state from ==="+this.getstate()+"=== to ===unchanged===");
+					logger.log(Level.FINEST, "changing state from ==="+this.getstate()+"=== to ===unchanged===");
 					this.setstate("unchanged");
 				}
 			}
-			//System.out.println("actual state ==="+this.getstate()+"=== after possible changing ...");
-
-			
 			
 			String debugtext = this.id + "\t" + in_entry.hausnummer_sortierbar;
 			debugtext += "\t" + in_entry.getTreffertypText() + "\t" + in_entry.hausnummer + "\t" + in_entry.osm_tag;
@@ -342,8 +376,8 @@ public class Housenumber {
 		} else {
 			// uups, in_entry isn't identically to this-entry, so throw an error
 			// as of 2014-03-22, its possible to find two way objects with same addresses (way43198767 vs. way43253396 (hnr. 30 vs. 30-31)
-			System.out.println("Exception,     this complete ===" + this.toStringlong() + "===");
-			System.out.println("Exception, in_entry complete ===" + in_entry.toStringlong() + "===");
+			logger.log(Level.SEVERE, 			"Exception,     this complete ===" + this.toStringlong() + "===");
+			logger.log(Level.FINEST, "Exception, in_entry complete ===" + in_entry.toStringlong() + "===");
 			throw new HausnummernException("update of Workcache-Entry couldn't be done, because existing entry was not correct one.");
 		}
 	}
@@ -377,7 +411,7 @@ public class Housenumber {
 			int act_prio = START_PRIO;
 
 			if(act_key.equals("amenity")) {
-				System.out.println(" key amenity  value ignoring ==="+act_value+"=== on osm-id " + this.osm_objektart + this.osm_id);
+				logger.log(Level.FINE, "key amenity  value ignoring ==="+act_value+"=== on osm-id " + this.osm_objektart + this.osm_id);
 				act_prio = 20;
 			}
 			if(act_key.equals("building")) {
@@ -391,7 +425,7 @@ public class Housenumber {
 							act_value.equals("apartments")) {
 					act_prio = 2;
 				} else {
-					System.out.println(" other new.building value ==="+act_value+"=== on osm-id " + this.osm_objektart + this.osm_id);
+					logger.log(Level.FINE, "other new.building value ==="+act_value+"=== on osm-id " + this.osm_objektart + this.osm_id);
 					act_prio = 9;
 				}
 			}
@@ -552,6 +586,13 @@ public class Housenumber {
 	}
 
 	/**
+	 * @return the postcode
+	 */
+	public String getPostcode() {
+		return postcode;
+	}
+
+	/**
 	 * @param id the id to set
 	 */
 	public void setId(Long id) {
@@ -607,7 +648,7 @@ public class Housenumber {
 		else if(treffertyp.equals("i"))
 			this.treffertyp = Treffertyp.IDENTICAL;
 		else {
-			System.out.println("ERROR ERROR: in Workcache_Entry.setTreffertyp(String) non allowed string value ==="+treffertyp+"===");
+			logger.log(Level.SEVERE, "ERROR ERROR: in Workcache_Entry.setTreffertyp(String) non allowed string value ==="+treffertyp+"===");
 		}
 	}
 	
@@ -640,6 +681,12 @@ public class Housenumber {
 		this.strasse = strasse;
 	}
 
+	/**
+	 * @param postcode the postcode to set
+	 */
+	public void setPostcode(String postcode) {
+		this.postcode = postcode;
+	}
 	
 
 
