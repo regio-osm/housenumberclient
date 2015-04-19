@@ -358,8 +358,7 @@ public class Evaluation {
 		OsmDataReader osmreader = new OsmDataReader();
 		Evaluation evaluation = new Evaluation();
 
-		if(! parameterCountry.equals("") && (! parameterMunicipiality.equals("")))
-			evaluation.setMunicipality(parameterCountry, parameterMunicipiality);
+		evaluation.setMunicipality(parameterCountry, parameterMunicipiality);
 		evaluation.setHousenumberAdditionCaseSensity(parameterHousenumbersCaseSensity);
 
 		HousenumberCollection list_housenumbers = new HousenumberCollection();
@@ -369,46 +368,39 @@ public class Evaluation {
 			// local file, work offline (only connect to osm data via overpass
 		if(! parameterImportdateiname.equals("")) {
 			// client-server mode, connect to regio-osm.de Server and API and get jobs
-			list_housenumbers.setFieldsForUniqueAddress(HousenumberCollection.FieldsForUniqueAddress.STREET_POSTCODE_HOUSENUMBER);
+			if(parameterCountry.equals("Netherland")) {
+				list_housenumbers.setFieldsForUniqueAddress(HousenumberCollection.FieldsForUniqueAddress.STREET_POSTCODE_HOUSENUMBER);
+				list_housenumbers.setAlternateFieldsForUniqueAddress(HousenumberCollection.FieldsForUniqueAddress.STREET_HOUSENUMBER);
+			} else {
+				list_housenumbers.setFieldsForUniqueAddress(HousenumberCollection.FieldsForUniqueAddress.STREET_HOUSENUMBER);
+				list_housenumbers.setAlternateFieldsForUniqueAddress(null);
+			}
 			list_housenumbers = hnrreader.ReadListFromFile(evaluation, parameterImportdateiname, parameterFieldSeparator, parameterHousenumbersCaseSensity);
 			osm_housenumbers.setFieldsForUniqueAddress(list_housenumbers.getFieldsForUniqueAddress());
 			osm_housenumbers = osmreader.ReadDataFromOverpass(evaluation, osm_housenumbers, parameterOSMRelationid);
-			evaluated_housenumbers = list_housenumbers.merge(osm_housenumbers, HousenumberCollection.FieldsForUniqueAddress.STREET_HOUSENUMBER);
+			evaluated_housenumbers = list_housenumbers.merge(osm_housenumbers, list_housenumbers.getAlternateFieldsForUniqueAddress());
 			evaluated_housenumbers.printhtml("evaluation.html");
 			logger.log(Level.INFO, "Number of housenumberlist entries after load of official housenumber list: "
 				+ evaluation.housenumberlist.length() + "   " + evaluation.housenumberlist.count_unchanged());
 		} else {
-	
 			HousenumberServerAPI hnrserver = new HousenumberServerAPI();
-	
-			hnrreader.setDBConnection(	configuration.db_application_url, 
-										configuration.db_application_username, 
-										configuration.db_application_password);
-
 			List<Job> jobs;
 	
 			if(parameterAllMissingJobs)
 				jobs = hnrserver.getMissingCountryJobs(parameterCountry);
 			else
 				jobs = hnrserver.findJobs(parameterCountry,parameterMunicipiality, parameterJobname, parameterOfficialkeysId);
-			
-	
-			//jobs = hnrserver.findJobs("Schweiz","Zürich", "Zürich", "*");
-			
 			logger.log(Level.INFO, "Number of Jobs received from Server: " + jobs.size());
 			
 			java.util.Date jobstart = new java.util.Date();
 			java.util.Date jobend = new java.util.Date();
 	
 			for(int jobindex = 0; jobindex < jobs.size(); jobindex++) {
-	
-		
 				if((parameterMaxJobs != -1) && (parameterMaxJobs < (jobindex + 1))) {
 					logger.log(Level.INFO, "maximum number of jobs, as specified, arrived. Stop further processing");
 					break;
 				}
 				if(parameterMaxMinutes != -1) {
-					Long tempprogramstarttime = programStart.getTime();
 					Long maxTime = programStart.getTime() + parameterMaxMinutes * 60 * 1000;
 					java.util.Date now = new java.util.Date();
 					if(now.getTime() > maxTime) {
@@ -420,13 +412,8 @@ public class Evaluation {
 				}
 	
 				Job actjob = jobs.get(jobindex);
-	
-				Long relationid = actjob.osmrelationid;
-				String jobname = actjob.jobname;
-	
 				evaluation.setJobData(actjob);
-				
-				
+								
 				jobstart = new java.util.Date();
 				logger.log(Level.INFO, "start working on job " + actjob.toString() + "; started at " + jobstart.toString());
 	
@@ -440,8 +427,13 @@ public class Evaluation {
 				java.util.Date dbloadstart = new java.util.Date();
 				list_housenumbers.clear();
 				//list_housenumbers = hnrreader.ReadListFromDB(evaluation);
-				list_housenumbers.setFieldsForUniqueAddress(HousenumberCollection.FieldsForUniqueAddress.STREET_POSTCODE_HOUSENUMBER);
-				list_housenumbers.setAlternateFieldsForUniqueAddress(HousenumberCollection.FieldsForUniqueAddress.POSTCODE_HOUSENUMBER);
+				if(parameterCountry.equals("Netherland")) {
+					list_housenumbers.setFieldsForUniqueAddress(HousenumberCollection.FieldsForUniqueAddress.STREET_POSTCODE_HOUSENUMBER);
+					list_housenumbers.setAlternateFieldsForUniqueAddress(HousenumberCollection.FieldsForUniqueAddress.POSTCODE_HOUSENUMBER);
+				} else {
+					list_housenumbers.setFieldsForUniqueAddress(HousenumberCollection.FieldsForUniqueAddress.STREET_HOUSENUMBER);
+					list_housenumbers.setAlternateFieldsForUniqueAddress(null);
+				}
 				list_housenumbers = hnrserver.ReadListFromServer(evaluation, list_housenumbers);
 				logger.log(Level.INFO, "Number of official housenumbers: " + list_housenumbers.length());
 				if(list_housenumbers.length() == 0) {
@@ -452,14 +444,14 @@ public class Evaluation {
 				java.util.Date overpassloadstart = new java.util.Date();
 				osm_housenumbers.clear();
 				osm_housenumbers.setFieldsForUniqueAddress(list_housenumbers.getFieldsForUniqueAddress());
-				osm_housenumbers.setAlternateFieldsForUniqueAddress(HousenumberCollection.FieldsForUniqueAddress.POSTCODE_HOUSENUMBER);
-				osm_housenumbers = osmreader.ReadDataFromOverpass(evaluation, osm_housenumbers, relationid);
+				osm_housenumbers.setAlternateFieldsForUniqueAddress(list_housenumbers.getAlternateFieldsForUniqueAddress());
+				osm_housenumbers = osmreader.ReadDataFromOverpass(evaluation, osm_housenumbers, actjob.osmrelationid);
 				logger.log(Level.INFO, "Number of OSM housenumbers: " + osm_housenumbers.length());
 				evaluation.evaluationtime = overpassloadstart.getTime();
 				java.util.Date overpassloadend = new java.util.Date();
 				java.util.Date mergedatastart = new java.util.Date();
 				evaluated_housenumbers.clear();
-				evaluated_housenumbers = list_housenumbers.merge(osm_housenumbers, HousenumberCollection.FieldsForUniqueAddress.STREET_HOUSENUMBER);
+				evaluated_housenumbers = list_housenumbers.merge(osm_housenumbers, list_housenumbers.getAlternateFieldsForUniqueAddress());
 				java.util.Date mergedataend = new java.util.Date();
 				evaluated_housenumbers.printhtml("test.html");
 	

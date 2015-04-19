@@ -18,7 +18,11 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.nio.charset.StandardCharsets;
+
+
 
 
 
@@ -49,8 +53,12 @@ import de.regioosm.housenumbers.Applicationconfiguration;
 
 
 public class HousenumberServerAPI {
-	Applicationconfiguration configuration = new Applicationconfiguration("");
+
 	static final String USER_AGENT = "regio-osm.de Housenumber Evaluation Client, contact: strassenliste@diesei.de";
+
+	Applicationconfiguration configuration = new Applicationconfiguration("");
+	private static final Logger logger = Evaluation.logger;
+
 
 	private String serverUrl = "";
 //TODO configuration
@@ -432,6 +440,7 @@ public class HousenumberServerAPI {
 	 
 			OutputStreamWriter writer = new OutputStreamWriter(connection.getOutputStream());
 			System.out.println("upload_string==="+urlParameters+"===");
+			logger.log(Level.FINE, "Request to get housenumberlist ===" + urlParameters + "===");
 			writer.write(urlParameters);
 			writer.flush();
 	
