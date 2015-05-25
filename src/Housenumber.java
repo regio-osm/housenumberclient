@@ -9,6 +9,8 @@ import java.util.logging.Logger;
 import java.util.logging.Level;
 
 
+
+
 /*
 
 	V1.0, 08.08.2013, Dietmar Seifert
@@ -51,6 +53,8 @@ public class Housenumber {
 			// bad implementation, to set this field at every housenumber instance, but don't know how to get info from housenumbercollection instance
 	private HousenumberCollection.FieldsForUniqueAddress	fieldsForUniqueAddress = HousenumberCollection.FieldsForUniqueAddress.STREET_HOUSENUMBER;
 	private HousenumberCollection.FieldsForUniqueAddress	alternateFieldsForUniqueAddress = null;
+	private HashMap<String, HousenumberCollection.FieldsForUniqueAddress> keypoolFieldsForUniqueAddress = null;
+
 
 	private String	state = ""; // ""=not set; "untouched"=got from database, without updates; "updated"=updated, "deleted!; "added"=real new entry
 
@@ -70,12 +74,13 @@ public class Housenumber {
 			ioerror.printStackTrace();
 		}
 	}
-		
+
 
 	public Housenumber(	HousenumberCollection collectioninstance)  {
 		this.isHousenumberaddition_exactly = collectioninstance.ishousenumberadditionCaseSentity();
 		this.fieldsForUniqueAddress = collectioninstance.getFieldsForUniqueAddress();
 		this.alternateFieldsForUniqueAddress = collectioninstance.getAlternateFieldsForUniqueAddress();
+		this.keypoolFieldsForUniqueAddress = collectioninstance.getkeypoolFieldsForUniqueAddress();
 	}
 	
 		/**
@@ -92,6 +97,24 @@ public class Housenumber {
 			listkey = this.getStrasse().toLowerCase()  + this.getPostcode().toLowerCase() + this.getHausnummerSortierbar().toLowerCase();
 		else if(this.fieldsForUniqueAddress.compareTo(HousenumberCollection.FieldsForUniqueAddress.POSTCODE_HOUSENUMBER) == 0)
 			listkey = this.getPostcode().toLowerCase() + this.getHausnummerSortierbar().toLowerCase();
+		return listkey;
+	}
+
+
+		/**
+		 * 
+		 * @return Key for the cache entry of the object. Normally will be build with streetname and housenumber
+		 */
+	//TODO in municipalities, where streetname and housenumber are not unique, one more value must be added, for example postcode
+	public String getListKey(String cachename) {
+		String listkey = "";
+	
+		if(this.fieldsForUniqueAddress.compareTo(HousenumberCollection.FieldsForUniqueAddress.STREET_HOUSENUMBER) == 0)
+			listkey = cachename + this.getStrasse().toLowerCase() + this.getHausnummerSortierbar().toLowerCase();
+		else if(this.fieldsForUniqueAddress.compareTo(HousenumberCollection.FieldsForUniqueAddress.STREET_POSTCODE_HOUSENUMBER) == 0)
+			listkey = cachename + this.getStrasse().toLowerCase()  + this.getPostcode().toLowerCase() + this.getHausnummerSortierbar().toLowerCase();
+		else if(this.fieldsForUniqueAddress.compareTo(HousenumberCollection.FieldsForUniqueAddress.POSTCODE_HOUSENUMBER) == 0)
+			listkey = cachename + this.getPostcode().toLowerCase() + this.getHausnummerSortierbar().toLowerCase();
 		return listkey;
 	}
 

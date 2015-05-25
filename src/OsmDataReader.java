@@ -272,6 +272,7 @@ public class OsmDataReader {
 	    				Long objectid = nodemap.getKey();
 	    				Collection<Tag> tags = nodemap.getValue().getTags();
 		        		String address_street = "";
+		        		String address_streetlocalized = "";
 		        		String address_postcode = "";
 		        		String address_housenumber = "";
 		        		HashMap<String,String> keyvalues = new HashMap<String,String>();
@@ -281,6 +282,11 @@ public class OsmDataReader {
 			        		if(		tag.getKey().equals("addr:street")
 			        			||	tag.getKey().equals("addr:place"))
 			        			address_street = tag.getValue();
+			        		if(!evaluation.getUselanguagecode().equals("")) {
+				        		if(		tag.getKey().equals("addr:street:" + evaluation.getUselanguagecode())
+				        			||	tag.getKey().equals("addr:place:" + evaluation.getUselanguagecode()))
+				        			address_streetlocalized = tag.getValue();
+			        		}
 			        		if(tag.getKey().equals("addr:postcode"))
 			        			address_postcode = tag.getValue().replace(" ", "");
 			        		if(tag.getKey().equals("addr:housenumber"))
@@ -292,7 +298,10 @@ public class OsmDataReader {
 							if(!address_street.equals("")) {
 								Housenumber osmhousenumber = new Housenumber(housenumbers);
 								osmhousenumber.setOSMObjekt("node", objectid);
-								osmhousenumber.setStrasse(address_street);
+								if(!address_streetlocalized.equals(""))
+									osmhousenumber.setStrasse(address_streetlocalized);
+								else
+									osmhousenumber.setStrasse(address_street);
 								osmhousenumber.setPostcode(address_postcode);
 								osmhousenumber.set_osm_tag(keyvalues);
 								String objectlonlat = nodemap.getValue().getLongitude() + " " + nodemap.getValue().getLatitude();
@@ -324,6 +333,7 @@ public class OsmDataReader {
 	    				Long objectid = waymap.getKey();
 		        		Collection<Tag> tags = waymap.getValue().getTags();
 		        		String address_street = "";
+		        		String address_streetlocalized = "";
 		        		String address_postcode = "";
 		        		String address_housenumber = "";
 		        		String centroid_lon = "";
@@ -335,6 +345,11 @@ public class OsmDataReader {
 			        		if(		tag.getKey().equals("addr:street")
 			        			||	tag.getKey().equals("addr:place"))
 			        			address_street = tag.getValue();
+			        		if(!evaluation.getUselanguagecode().equals("")) {
+				        		if(		tag.getKey().equals("addr:street:" + evaluation.getUselanguagecode())
+				        			||	tag.getKey().equals("addr:place:" + evaluation.getUselanguagecode()))
+				        			address_streetlocalized = tag.getValue();
+			        		}
 			        		if(tag.getKey().equals("addr:postcode"))
 			        			address_postcode = tag.getValue().replace(" ", "");
 			        		if(tag.getKey().equals("addr:housenumber"))
@@ -345,10 +360,14 @@ public class OsmDataReader {
 			        			centroid_lat = tag.getValue();
 		        		}
 						if(!address_housenumber.equals("")) {
-							if(!address_street.equals("")) {
+							if(		!address_street.equals("") 
+								||	!address_streetlocalized.equals("") ) {
 								Housenumber osmhousenumber = new Housenumber(housenumbers);
 								osmhousenumber.setOSMObjekt("way", objectid);
-								osmhousenumber.setStrasse(address_street);
+								if(!address_streetlocalized.equals(""))
+									osmhousenumber.setStrasse(address_streetlocalized);
+								else
+									osmhousenumber.setStrasse(address_street);
 								osmhousenumber.setPostcode(address_postcode);
 								osmhousenumber.set_osm_tag(keyvalues);
 								osmhousenumber.setHausnummer(address_housenumber);
@@ -382,6 +401,7 @@ public class OsmDataReader {
 	    				Long objectid = relationmap.getKey();
 		        		Collection<Tag> tags = relationmap.getValue().getTags();
 		        		String address_street = "";
+		        		String address_streetlocalized = "";
 		        		String address_postcode = "";
 		        		String address_housenumber = "";
 		        		HashMap<String,String> keyvalues = new HashMap<String,String>();
@@ -391,6 +411,11 @@ public class OsmDataReader {
 			        		if(		tag.getKey().equals("addr:street")
 			        			||	tag.getKey().equals("addr:place"))
 			        			address_street = tag.getValue();
+			        		if(!evaluation.getUselanguagecode().equals("")) {
+				        		if(		tag.getKey().equals("addr:street:" + evaluation.getUselanguagecode())
+				        			||	tag.getKey().equals("addr:place:" + evaluation.getUselanguagecode()))
+				        			address_streetlocalized = tag.getValue();
+			        		}
 			        		if(tag.getKey().equals("addr:postcode"))
 			        			address_postcode = tag.getValue().replace(" ", "");
 			        		if(tag.getKey().equals("addr:housenumber"))
@@ -400,7 +425,10 @@ public class OsmDataReader {
 							if(!address_street.equals("")) {
 								Housenumber osmhousenumber = new Housenumber(housenumbers);
 								osmhousenumber.setOSMObjekt("relation", objectid);
-								osmhousenumber.setStrasse(address_street);
+								if(!address_streetlocalized.equals(""))
+									osmhousenumber.setStrasse(address_streetlocalized);
+								else
+									osmhousenumber.setStrasse(address_street);
 								osmhousenumber.setPostcode(address_postcode);
 								osmhousenumber.set_osm_tag(keyvalues);
 								osmhousenumber.setHausnummer(address_housenumber);
