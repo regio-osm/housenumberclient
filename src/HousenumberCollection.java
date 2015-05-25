@@ -46,14 +46,15 @@ public class HousenumberCollection {
 	private FieldsForUniqueAddress fieldsForUniqueAddress = FieldsForUniqueAddress.STREET_HOUSENUMBER;
 	public TreeMap<String,String> alternatecache = new TreeMap<String,String>();
 	private FieldsForUniqueAddress alternateFieldsForUniqueAddress = null;
-	
+	private HashMap<String, String> keypool = new HashMap<String, String>();
+	private HashMap<String, FieldsForUniqueAddress> keypoolFieldsForUniqueAddress = new HashMap<String, FieldsForUniqueAddress>();
+
 
 	public enum FieldsForUniqueAddress {
-		STREET_HOUSENUMBER, POSTCODE_HOUSENUMBER, STREET_POSTCODE_HOUSENUMBER;
+		STREET_HOUSENUMBER, POSTCODE_HOUSENUMBER, STREET_POSTCODE_HOUSENUMBER, STREETLOCALIZED_HOUSENUMBER;
 	}
 
 
-	
 	private void workcache_debug(String outputtext) {
 		PrintWriter debug_output = null;
 		String workcache_debugfile = "workcache_debug.txt";
@@ -87,6 +88,7 @@ public class HousenumberCollection {
 		this.housenumberadditionCaseSentity = housenumberadditionCaseSentity;
 	}
 
+
 	public void setFieldsForUniqueAddress(FieldsForUniqueAddress setfields) {
 		fieldsForUniqueAddress = setfields;
 	}
@@ -95,13 +97,26 @@ public class HousenumberCollection {
 		alternateFieldsForUniqueAddress = setfields;
 	}
 
+	public void addFieldsForUniqueAddress(String cachename, FieldsForUniqueAddress setfields) {
+		keypoolFieldsForUniqueAddress.put(cachename, setfields);
+	}
+
 	public FieldsForUniqueAddress getFieldsForUniqueAddress() {
 		return fieldsForUniqueAddress;
+	}
+
+	public FieldsForUniqueAddress getFieldsForUniqueAddress(String cachename) {
+		return keypoolFieldsForUniqueAddress.get(cachename);
 	}
 
 	public FieldsForUniqueAddress getAlternateFieldsForUniqueAddress() {
 		return alternateFieldsForUniqueAddress;
 	}
+
+	public HashMap<String, FieldsForUniqueAddress> getkeypoolFieldsForUniqueAddress() {
+		return keypoolFieldsForUniqueAddress;
+	}
+
 
 	public int length() {
 		return cache_count;
@@ -113,6 +128,11 @@ public class HousenumberCollection {
 		fieldsForUniqueAddress = FieldsForUniqueAddress.STREET_HOUSENUMBER;
 		alternatecache.clear();
 		alternateFieldsForUniqueAddress = null;
+
+	    keypool.clear();
+		for (String cachename : keypool.keySet()) {
+		    keypoolFieldsForUniqueAddress.remove(cachename);
+		}
 	}
 
 	public int count_unchanged() {
@@ -148,6 +168,11 @@ public class HousenumberCollection {
 		cache_count++;
 		if(this.getAlternateFieldsForUniqueAddress() != null)
 			alternatecache.put(entry.getAlternateListKey(), primaryListkey);
+
+		for (String cachename : keypoolFieldsForUniqueAddress.keySet()) {
+			keypool.put(entry.getListKey(cachename), primaryListkey);
+		}
+
 		return newentry;
 	}
 
@@ -162,6 +187,10 @@ public class HousenumberCollection {
 		cache_count++;
 		if(this.getAlternateFieldsForUniqueAddress() != null)
 			alternatecache.put(in_newentry.getAlternateListKey(), primaryListkey);
+
+		for (String cachename : keypoolFieldsForUniqueAddress.keySet()) {
+			keypool.put(in_newentry.getListKey(cachename), primaryListkey);
+		}
 	}
 
 	
@@ -198,6 +227,21 @@ public class HousenumberCollection {
 		else
 			return null;
 	}
+
+
+	/**
+	 * get the cacheentry object with the given alternate index
+	 * THIS IS THE NEW METHOD, inparam dummy is just for parallel use of old and new alternatve index
+	 * @param index: alternate index of the cacheentry
+	 * @return:			 the found housenumber object (only one) or null
+	 */
+	public Housenumber alternateEntry(String dummy, String alternateListkey) {	// public version of find_entry, but slightly different works
+		if(cache.get(alternateListkey) != null)
+			return cache.get(alternateListkey);
+		else
+			return null;
+	}
+
 
 	/**
 	 * Main methode to compare two collection of housenumberlists. Normally, one list is the official list from municipality and the other are osm housenumbers in same area.
@@ -261,12 +305,77 @@ public class HousenumberCollection {
     	return mergedhousenumbers;
 	}
 	
+
+	/**
+	 * Main methode to compare two collection of housenumberlists. Normally, one list is the official list from municipality and the other are osm housenumbers in same area.
+	 * 
+	 * @param osmhousenumbers: second list of housenumbers, which will be compared to instance housenumberlist
+	 * @param fieldsAtLeastIdenticallyForMerge: if the standard methode to compare a housenumber in both lists fail (with property value of fieldForUniqueAddress in this instance),
+	 * 		then take this second value for comparing. For example, in Netherland normally try to compare Street, Postcode and housenumber.
+	 * 		But if doesn't hit, check at least Postcode and housenumber, because this is enough for a unique address in Netherland.
+	 * @return: the merged housenumber list
+	 */
+	public HousenumberCollection NEW_STILLINCACTIVE___merge___(HousenumberCollection osmhousenumbers, FieldsForUniqueAddress fieldsAtLeastIdenticallyForMerge) {
+		HousenumberCollection mergedhousenumbers = new HousenumberCollection();
+
+		mergedhousenumbers.setFieldsForUniqueAddress(this.getFieldsForUniqueAddress());
+		System.out.print("Start of evaluation: ");
+		System.out.print("Number of OSM housenumbers: " + osmhousenumbers.cache.size());
+		System.out.println(", Number of official housenumbers: " + cache.size());
+		for (Map.Entry<String,Housenumber> entry : cache.entrySet()) {
+			String thiskey = entry.getKey();
+			Housenumber listhousenumber = entry.getValue();
+			Housenumber newhousenumber = listhousenumber;
+			if(osmhousenumbers.cache.containsKey(thiskey)) {
+				Housenumber foundosmhousenumber = osmhousenumbers.cache.get(thiskey);
+				newhousenumber.setTreffertyp(Housenumber.Treffertyp.IDENTICAL);
+				newhousenumber.set_osm_tag_rawvalues(foundosmhousenumber);
+				newhousenumber.setOSMObjekt(foundosmhousenumber.getOsmObjektart(), foundosmhousenumber.getOsmId());
+				newhousenumber.setLonlat(foundosmhousenumber.getLonlat());
+				newhousenumber.setLonlat_source(foundosmhousenumber.getLonlat_source());
+				mergedhousenumbers.add_newentry(newhousenumber);
+			} else {
+				boolean foundentry = false;
+				for (String cachename : keypoolFieldsForUniqueAddress.keySet()) {
+					String thisAlternateKey = listhousenumber.getListKey(cachename);
+					if(osmhousenumbers.alternatecache.containsKey(thisAlternateKey)) {
+						String primaryKey = osmhousenumbers.alternatecache.get(thisAlternateKey);
+						Housenumber foundosmhousenumber = osmhousenumbers.cache.get(primaryKey);
+						newhousenumber.setTreffertyp(Housenumber.Treffertyp.IDENTICAL);
+						newhousenumber.set_osm_tag_rawvalues(foundosmhousenumber);
+						newhousenumber.setOSMObjekt(foundosmhousenumber.getOsmObjektart(), foundosmhousenumber.getOsmId());
+						newhousenumber.setLonlat(foundosmhousenumber.getLonlat());
+						newhousenumber.setLonlat_source(foundosmhousenumber.getLonlat_source());
+						mergedhousenumbers.add_newentry(newhousenumber);
+						foundentry = true;
+						break;
+					}
+				}
+				if(!foundentry) {
+					mergedhousenumbers.add_newentry(listhousenumber);
+				}
+			}
+		}
+			// ok, now all single list housenumbers and identical housenumbers are in mergedhousenumbers
+			
+			// now check, which housenumber are osm only housenumbers and add them
+    	for (Map.Entry<String,Housenumber> entry : osmhousenumbers.cache.entrySet()) {
+			String thiskey = entry.getKey();
+			Housenumber osmhousenumber = entry.getValue();
+			if(! mergedhousenumbers.cache.containsKey(thiskey)) {
+				mergedhousenumbers.add_newentry(osmhousenumber);
+			}
+		}
+		System.out.println("End of evaluation: Number of merged housenumbers: " + mergedhousenumbers.cache.size());
+    	return mergedhousenumbers;
+	}
 	
+
 		// update in this cache
 	public void update(Housenumber updateentry) {
 		boolean debug_output = true;
 		if(debug_output) System.out.println("start of .update of class Workcache ...");
-
+//TODO must also test against keypool ???
 		if(debug_output) System.out.println("in .update of class Workcache: find entry ...");
 		Housenumber found_entry = findEntryInCache(updateentry);
 		if(debug_output) {  

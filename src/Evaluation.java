@@ -27,6 +27,7 @@ public class Evaluation {
 	private Integer adminLevel = 0;
 	private String jobname = "";
 	private String subid = "";
+	private String uselanguagecode = "";
 	public Long evaluationtime = 0L;
 	public Long osmtime = 0L;
 	public HousenumberCollection housenumberlist = new HousenumberCollection();
@@ -37,6 +38,7 @@ public class Evaluation {
 		country = "";
 		municipality = "";
 		officialkeysId = "";
+		uselanguagecode = "";
 		adminLevel = 0;
 		jobname = "";
 		housenumberlist.clear();
@@ -54,6 +56,10 @@ public class Evaluation {
 		return this.officialkeysId;
 	}
 	
+	public String getUselanguagecode() {
+		return this.uselanguagecode;
+	}
+
 	public Integer getAdminLevel() {
 		return this.adminLevel;
 	}
@@ -106,7 +112,17 @@ public class Evaluation {
 	public void setOfficialkeysId(String officialkeysId) {
 		this.officialkeysId = officialkeysId;
 	}
+
 	
+	/**
+	 * set language ISO-Code for use in evaluation. Examples are name and addr:street
+	 * @param uselanguagecode
+	 */
+	public void setUselanguagecode(String uselanguagecode) {
+		this.uselanguagecode = uselanguagecode;
+	}
+
+
 	/**
 	 * copy complete job data into evaluation structure
 	 * @param job
@@ -174,10 +190,11 @@ public class Evaluation {
 			System.out.println("");
 			System.out.println("Help for client-server mode and its program call parameters:");
 			System.out.println("-country countryname -- ('Bundesrepublik Deutschland' or other countries in english version, for exampel 'Netherland'");
+			System.out.println("-officialkeysid id -- official id of the muncipality. In Germany amtlicher Gemeindeschlüssel. Wildcard at the end * possible");
 			System.out.println("-adminhierarchy xy -- administrative hierarchy, for example 'Bundesrepublik Deutschland,Bayern'");
 			System.out.println("-municipality muniname -- name of the municipality");
 			System.out.println("-jobname xy -- jobname of the municipality. Name of the muncipality or of a subadmin area, if available in osm and in offizial housenumber list");
-			System.out.println("-officialkeysid id -- official id of the muncipality. In Germany amtlicher Gemeindeschlüssel. Wildcard at the end * possible");
+			System.out.println("-languagecode xy (2digits ISO-Code, like DE)");
 			System.out.println("-allmissingjobs -- flag, that all missing jobs in a country should be run (default: only as specified in other parameters");
 			System.out.println("-maxjobs 4711 -- maximum number of jobs, that should be worked on");
 			System.out.println("-maxminutes 30 -- maximum number of minutes, the program should run. A running evaluation will be finished.");
@@ -203,6 +220,7 @@ public class Evaluation {
 			System.out.println("-officialkeysid 8stelligeramtlicherGemeindeschlüssel z.B. 09761000");
 			System.out.println("-adminhierarchy xy -- administrative hierarchy, for example 'Bundesrepublik Deutschland,Bayern'");
 			System.out.println("-jobname xy -- jobname of the municipality. Name of the muncipality or of a subadmin area, if available in osm and in offizial housenumber list");
+			System.out.println("-languagecode xy (2digits ISO-Code, like DE)");
 			System.out.println("-allmissingjobs -- flag, that all missing jobs in a country should be run (default: only as specified in other parameters");
 			System.out.println("-maxjobs 4711 -- maximum number of jobs, that should be worked on");
 			System.out.println("-maxminutes 30 -- maximum number of minutes, the program should run. A running evaluation will be finished.");
@@ -217,6 +235,7 @@ public class Evaluation {
 		String parameterMunicipiality = "";
 		String parameterJobname = "";
 		String parameterOfficialkeysId = "";
+		String parameterLanguagecode = "";
 		boolean parameterAllMissingJobs = false;
 		int parameterMaxJobs = -1;
 		int parameterMaxMinutes = -1;
@@ -260,6 +279,10 @@ public class Evaluation {
 				if (args[argsi].equals("-maxminutes")) {
 					parameterMaxMinutes = Integer.parseInt(args[argsi + 1]);
 					argsOkCount  += 2;
+				}
+				if(args[argsi].equals("-languagecode")) {
+					parameterLanguagecode = args[argsi+1];
+					argsOkCount += 2;
 				}
 				if (args[argsi].equals("-allmissingjobs")) {
 					parameterAllMissingJobs = true;
@@ -360,6 +383,8 @@ public class Evaluation {
 
 		evaluation.setMunicipality(parameterCountry, parameterMunicipiality);
 		evaluation.setHousenumberAdditionCaseSensity(parameterHousenumbersCaseSensity);
+		evaluation.setUselanguagecode(parameterLanguagecode);
+
 
 		HousenumberCollection list_housenumbers = new HousenumberCollection();
 		HousenumberCollection osm_housenumbers = new HousenumberCollection();
@@ -370,7 +395,10 @@ public class Evaluation {
 			// client-server mode, connect to regio-osm.de Server and API and get jobs
 			if(parameterCountry.equals("Netherland")) {
 				list_housenumbers.setFieldsForUniqueAddress(HousenumberCollection.FieldsForUniqueAddress.STREET_POSTCODE_HOUSENUMBER);
-				list_housenumbers.setAlternateFieldsForUniqueAddress(HousenumberCollection.FieldsForUniqueAddress.STREET_HOUSENUMBER);
+				list_housenumbers.addFieldsForUniqueAddress("NetherlandAlternative", HousenumberCollection.FieldsForUniqueAddress.STREET_HOUSENUMBER);
+			} else if(parameterCountry.equals("Italia")) {
+				list_housenumbers.setFieldsForUniqueAddress(HousenumberCollection.FieldsForUniqueAddress.STREET_HOUSENUMBER);
+				list_housenumbers.addFieldsForUniqueAddress("Italia---Language-de", HousenumberCollection.FieldsForUniqueAddress.STREETLOCALIZED_HOUSENUMBER);
 			} else {
 				list_housenumbers.setFieldsForUniqueAddress(HousenumberCollection.FieldsForUniqueAddress.STREET_HOUSENUMBER);
 				list_housenumbers.setAlternateFieldsForUniqueAddress(null);
