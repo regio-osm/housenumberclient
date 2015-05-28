@@ -8,6 +8,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
@@ -28,9 +29,12 @@ import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.zip.GZIPInputStream;
+
+
 
 
 
@@ -124,10 +128,13 @@ public class OsmDataReader {
 				if(hausnummer_ende_int > hausnummer_start_int) {
 					for(Integer hausnummerindex=hausnummer_start_int; hausnummerindex <= hausnummer_ende_int; hausnummerindex+=2)
 						hausnummern_array.add(hausnummerindex.toString());
-				}
+				} else {
+					hausnummern_array.add(hausnummertext);
+				}					
 			} catch( NumberFormatException e) {
-				logger.log(Level.WARNING, "Error during parsing text to integer, text was ==="+hausnummertext+"===");
-				e.printStackTrace();
+				//logger.log(Level.WARNING, "Error during parsing text to integer, text was ==="+hausnummertext+"===");
+				//e.printStackTrace();
+				hausnummern_array.add(hausnummertext);
 			}
 
 		}
@@ -177,29 +184,58 @@ public class OsmDataReader {
 			logger.log(Level.FINE, "Overpass Request URL to get housenumbers ===" + url_string + "===");
 
 			StringBuffer osmresultcontent = new StringBuffer();
-			url = new URL(url_string);
 
-			urlConn = url.openConnection(); 
-			urlConn.setDoInput(true); 
-			urlConn.setUseCaches(false);
-			urlConn.setRequestProperty("User-Agent", "regio-osm.de Housenumber Evaluation Client, contact: strassenliste@diesei.de");
-			urlConn.setRequestProperty("Accept-Encoding", "gzip, compress");
-			
-			String inputline = "";
-			InputStream overpassResponse = urlConn.getInputStream(); 
-
-			Integer headeri = 1;
-			logger.log(Level.FINE, "Overpass URL Response Header-Fields ...");
+			InputStream overpassResponse = null; 
 			String responseContentEncoding = "";
-			while(urlConn.getHeaderFieldKey(headeri) != null) {
-				logger.log(Level.FINE, "  Header # " + headeri 
-					+ ":  [" + urlConn.getHeaderFieldKey(headeri)
-					+ "] ===" + urlConn.getHeaderField(headeri) + "===");
-				if(urlConn.getHeaderFieldKey(headeri).equals("Content-Encoding"))
-					responseContentEncoding = urlConn.getHeaderField(headeri);
-				headeri++;
-			}
-
+			Integer numberfailedtries = 0;
+			boolean finishedoverpassquery = false;
+			do {
+				try {
+					url = new URL(url_string);
+		
+					urlConn = url.openConnection(); 
+					urlConn.setDoInput(true); 
+					urlConn.setUseCaches(false);
+					urlConn.setRequestProperty("User-Agent", "regio-osm.de Housenumber Evaluation Client, contact: strassenliste@diesei.de");
+					urlConn.setRequestProperty("Accept-Encoding", "gzip, compress");
+					
+					overpassResponse = urlConn.getInputStream(); 
+		
+					Integer headeri = 1;
+					logger.log(Level.FINE, "Overpass URL Response Header-Fields ...");
+					while(urlConn.getHeaderFieldKey(headeri) != null) {
+						logger.log(Level.FINE, "  Header # " + headeri 
+							+ ":  [" + urlConn.getHeaderFieldKey(headeri)
+							+ "] ===" + urlConn.getHeaderField(headeri) + "===");
+						if(urlConn.getHeaderFieldKey(headeri).equals("Content-Encoding"))
+							responseContentEncoding = urlConn.getHeaderField(headeri);
+						headeri++;
+					}
+					finishedoverpassquery = true;
+				} catch (MalformedURLException mue) {
+					logger.log(Level.WARNING, "Overpass API request produced a malformed Exception (Request #" 
+						+ (numberfailedtries + 1) + ", Request URL was ===" + url_string + "===, Details follows ...");					
+					logger.log(Level.WARNING, mue.toString());
+					numberfailedtries++;
+					TimeUnit.SECONDS.sleep(2);
+					if(numberfailedtries > 3) {
+						logger.log(Level.SEVERE, "Overpass API didn't delivered data, gave up after 3 failed requests, Request URL was ===" + url_string + "===");
+						return null;
+					}
+				} catch (IOException ioe) {
+					logger.log(Level.WARNING, "Overpass API request produced an Input/Output Exception  (Request #" 
+						+ (numberfailedtries + 1) + ", Request URL was ===" + url_string + "===, Details follows ...");					
+					logger.log(Level.WARNING, ioe.toString());
+					numberfailedtries++;
+					TimeUnit.SECONDS.sleep(2);
+					if(numberfailedtries > 3) {
+						logger.log(Level.SEVERE, "Overpass API didn't delivered data, gave up after 3 failed requests, Request URL was ===" + url_string + "===");
+						return null;
+					}
+				}
+			} while(! finishedoverpassquery);
+	
+			String inputline = "";
 			if(responseContentEncoding.equals("gzip")) {
 				dis = new BufferedReader(new InputStreamReader(new GZIPInputStream(overpassResponse),"UTF-8"));
 			} else {
@@ -210,7 +246,6 @@ public class OsmDataReader {
 				osmresultcontent.append(inputline + "\n");
 			}
 			dis.close();
-
 			
 				// first, save upload data as local file, just for checking or for history
 			DateFormat time_formatter = new SimpleDateFormat("yyyyMMdd-HHmmss'Z'");
@@ -645,15 +680,17 @@ public class OsmDataReader {
 			logger.log(Level.SEVERE, "Osmosis runtime Error ...");
 			logger.log(Level.SEVERE, osmosiserror.toString());
 	    } catch (InterruptedException e) {
+	    	logger.log(Level.WARNING, "Execution of type InterruptedException occured, details follows ...");
+			logger.log(Level.WARNING, e.toString());
 	        /* do nothing */
-		} catch (MalformedURLException mue) {
-			logger.log(Level.SEVERE, "Overpass API request produced a malformed Exception, Request URL was ===" + url_string + "===, Details follows ...");					
-			logger.log(Level.SEVERE, mue.toString());
-			return housenumbers;
-		} catch (IOException ioe) {
-			logger.log(Level.SEVERE, "Overpass API request produced an Input/Output Exception, Request URL was ===" + url_string + "===, Details follows ...");					
-			logger.log(Level.SEVERE, ioe.toString());
-			return housenumbers;
+	    } catch (UnsupportedEncodingException e) {
+			// TODO Auto-generated catch block
+	    	logger.log(Level.SEVERE, "Execution of type InterruptedException occured, details follows ...");
+			logger.log(Level.SEVERE, e.toString());
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+	    	logger.log(Level.SEVERE, "Execution of type InterruptedException occured, details follows ...");
+			logger.log(Level.SEVERE, e.toString());
 		}
 		return housenumbers;
 	}
