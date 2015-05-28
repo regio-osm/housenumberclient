@@ -405,11 +405,14 @@ public class Evaluation {
 			}
 			list_housenumbers = hnrreader.ReadListFromFile(evaluation, parameterImportdateiname, parameterFieldSeparator, parameterHousenumbersCaseSensity);
 			osm_housenumbers.setFieldsForUniqueAddress(list_housenumbers.getFieldsForUniqueAddress());
-			osm_housenumbers = osmreader.ReadDataFromOverpass(evaluation, osm_housenumbers, parameterOSMRelationid);
-			evaluated_housenumbers = list_housenumbers.merge(osm_housenumbers, list_housenumbers.getAlternateFieldsForUniqueAddress());
-			evaluated_housenumbers.printhtml("evaluation.html");
-			logger.log(Level.INFO, "Number of housenumberlist entries after load of official housenumber list: "
-				+ evaluation.housenumberlist.length() + "   " + evaluation.housenumberlist.count_unchanged());
+			HousenumberCollection tempreceived_osm_housenumbers = osmreader.ReadDataFromOverpass(evaluation, osm_housenumbers, parameterOSMRelationid);
+			if(tempreceived_osm_housenumbers != null) {
+				osm_housenumbers = tempreceived_osm_housenumbers;
+				evaluated_housenumbers = list_housenumbers.merge(osm_housenumbers, list_housenumbers.getAlternateFieldsForUniqueAddress());
+				evaluated_housenumbers.printhtml("evaluation.html");
+				logger.log(Level.INFO, "Number of housenumberlist entries after load of official housenumber list: "
+					+ evaluation.housenumberlist.length() + "   " + evaluation.housenumberlist.count_unchanged());
+			}
 		} else {
 			HousenumberServerAPI hnrserver = new HousenumberServerAPI();
 			List<Job> jobs;
@@ -473,7 +476,13 @@ public class Evaluation {
 				osm_housenumbers.clear();
 				osm_housenumbers.setFieldsForUniqueAddress(list_housenumbers.getFieldsForUniqueAddress());
 				osm_housenumbers.setAlternateFieldsForUniqueAddress(list_housenumbers.getAlternateFieldsForUniqueAddress());
-				osm_housenumbers = osmreader.ReadDataFromOverpass(evaluation, osm_housenumbers, actjob.osmrelationid);
+
+				HousenumberCollection tempreceived_osm_housenumbers = osmreader.ReadDataFromOverpass(evaluation, osm_housenumbers, actjob.osmrelationid);
+				if(tempreceived_osm_housenumbers == null) {
+					logger.log(Level.WARNING, "Warning: job will be ignored, because request to overpass for osm housenumbers failed for job " + actjob.toString() + "; started at " + jobstart.toString());
+					continue;
+				}
+				osm_housenumbers = tempreceived_osm_housenumbers;
 				logger.log(Level.INFO, "Number of OSM housenumbers: " + osm_housenumbers.length());
 				evaluation.evaluationtime = overpassloadstart.getTime();
 				java.util.Date overpassloadend = new java.util.Date();
