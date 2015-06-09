@@ -31,6 +31,7 @@ public class Job {
 	public String jobname = "";
 	public String subid = "";
 	public Long osmrelationid = 0L;
+	public String serverobjectid = "";		// optionally unique id from server to give information about source of job (up to now set only when job is from jobqueue in 06/2015)
 
 	public Job() {
 		this.country = "";
@@ -40,6 +41,7 @@ public class Job {
 		this.jobname = "";
 		this.subid = "";
 		this.osmrelationid = 0L;
+		this.serverobjectid = "";
 	}
 
 	public Job(String country, String municipality, String officialkeysId, Integer adminLevel, String jobname, String subid, Long relationid) {
@@ -50,8 +52,21 @@ public class Job {
 		this.jobname = jobname;
 		this.subid = subid;
 		this.osmrelationid = relationid;
+		this.serverobjectid = serverobjectid;
 	}
 
+	public Job(String country, String municipality, String officialkeysId, Integer adminLevel, String jobname, String subid, Long relationid, String serverobjectid) {
+		this.country = country;
+		this.municipality = municipality;
+		this.officialkeysId = officialkeysId;
+		this.adminLevel = adminLevel;
+		this.jobname = jobname;
+		this.subid = subid;
+		this.osmrelationid = relationid;
+		this.serverobjectid = serverobjectid;
+	}
+
+	
 	private int index = 0;
 
 	List<Job> jobs = new ArrayList<Job>();

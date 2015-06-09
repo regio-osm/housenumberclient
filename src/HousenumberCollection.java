@@ -426,7 +426,8 @@ public class HousenumberCollection {
 					+	"OSMTyp" + fieldseparator
 					+	"OSMTag" + fieldseparator
 					+	"OSMTagPrio" + fieldseparator
-					+	"LonLat" + fieldseparator;
+					+	"LonLat" + fieldseparator
+					+	"Serverobjectid" + fieldseparator;
 			outputbuffer.append(actrecord + "\n");
 		}
 
@@ -437,6 +438,7 @@ public class HousenumberCollection {
 		outputbuffer.append("#Para Jobname=" + evaluation.getJobname() + "\n");
 		outputbuffer.append("#Para OSMTime=" + evaluation.osmtime + "\n");
 		outputbuffer.append("#Para EvaluationTime=" + evaluation.evaluationtime + "\n");
+		outputbuffer.append("#Para Serverobjectid=" + evaluation.getServerobjectid() + "\n");
 		
 		for (Map.Entry<String,Housenumber> entry : cache.entrySet()) {
 			Housenumber housenumber = entry.getValue();
