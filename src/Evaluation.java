@@ -27,12 +27,14 @@ public class Evaluation {
 	private Integer adminLevel = 0;
 	private String jobname = "";
 	private String subid = "";
+	private String serverobjectid = "";
 	private String uselanguagecode = "";
 	public Long evaluationtime = 0L;
 	public Long osmtime = 0L;
 	public HousenumberCollection housenumberlist = new HousenumberCollection();
 	public static final Logger logger = Logger.getLogger(Evaluation.class.getName());
-
+	public static Integer onlyPartOfStreetnameIndexNo = -1;
+	public static String onlyPartOfStreetnameSeparator = "";
 
 	public void initialize() {
 		country = "";
@@ -70,6 +72,18 @@ public class Evaluation {
 
 	public String getSubid() {
 		return this.subid;
+	}
+	
+	public String getServerobjectid() {
+		return this.serverobjectid;
+	}
+
+	public Integer getOnlyPartOfStreetnameIndexNo() {
+		return this.onlyPartOfStreetnameIndexNo;
+	}
+	
+	public String getOnlyPartOfStreetnameSeparator() {
+		return this.onlyPartOfStreetnameSeparator;
 	}
 
 	public HousenumberCollection getHousenumberlist() {
@@ -113,7 +127,15 @@ public class Evaluation {
 		this.officialkeysId = officialkeysId;
 	}
 
+
+	public void setOnlyPartOfStreetnameIndexNo(Integer indexNo) {
+		this.onlyPartOfStreetnameIndexNo = indexNo;
+	}
 	
+	public void setOnlyPartOfStreetnameSeparator(String separator) {
+		this.onlyPartOfStreetnameSeparator = separator;
+	}
+
 	/**
 	 * set language ISO-Code for use in evaluation. Examples are name and addr:street
 	 * @param uselanguagecode
@@ -134,6 +156,7 @@ public class Evaluation {
 		this.adminLevel = job.adminLevel;
 		this.jobname = job.jobname;
 		this.subid = job.subid;
+		this.serverobjectid = job.serverobjectid;
 	}
 
 	
@@ -198,6 +221,8 @@ public class Evaluation {
 			System.out.println("-allmissingjobs -- flag, that all missing jobs in a country should be run (default: only as specified in other parameters");
 			System.out.println("-maxjobs 4711 -- maximum number of jobs, that should be worked on");
 			System.out.println("-maxminutes 30 -- maximum number of minutes, the program should run. A running evaluation will be finished.");
+			System.out.println("-queuejobs yes/no -- yes: get next jobs, which are regularly to process; no (default): get jobs, according to other parameters like -country, -municipality etc.");
+			System.out.println("-queuefilter instant/regular -- if not set, both; instant: only instant requested jobs; regular: only jobs, which are scheduled on regularly time basis - only active, if parameter -queuejobs set to yes");
 			return;
 		}
 		if ((args.length >= 1) && (args[0].equals("-hDE"))) {
@@ -224,6 +249,8 @@ public class Evaluation {
 			System.out.println("-allmissingjobs -- flag, that all missing jobs in a country should be run (default: only as specified in other parameters");
 			System.out.println("-maxjobs 4711 -- maximum number of jobs, that should be worked on");
 			System.out.println("-maxminutes 30 -- maximum number of minutes, the program should run. A running evaluation will be finished.");
+			System.out.println("-queuejobs yes/no -- yes: get next jobs, which are regularly to process; no (default): get jobs, according to other parameters like -country, -municipality etc. Please set -maxjobs, too");
+			System.out.println("-queuefilter instant/regular -- if not set, both; instant: only instant requested jobs; regular: only jobs, which are scheduled on regularly time basis - only active, if parameter -queuejobs set to yes");
 			return;
 		}
 
@@ -237,6 +264,8 @@ public class Evaluation {
 		String parameterOfficialkeysId = "";
 		String parameterLanguagecode = "";
 		boolean parameterAllMissingJobs = false;
+		boolean parameterGetQueueJobs = false;
+		String parameterQueueFilter = "";
 		int parameterMaxJobs = -1;
 		int parameterMaxMinutes = -1;
 		boolean parameterHousenumbersCaseSensity = false;
@@ -301,7 +330,24 @@ public class Evaluation {
 					}
 					argsOkCount += 2;
 				}
-
+				if (args[argsi].equals("-queuejobs")) {
+					String yesno = args[argsi + 1].toLowerCase().substring(0,1);
+					if (yesno.equals("y") || yesno.equals("j")) {
+						parameterGetQueueJobs = true;
+					} else {
+						parameterGetQueueJobs = false;
+					}
+					argsOkCount += 2;
+				}
+				if (args[argsi].equals("-queuefilter")) {
+					String parametervalue = args[argsi + 1].toLowerCase().substring(0,1);
+					if (parametervalue.equals("i") || parametervalue.equals("i")) {
+						parameterQueueFilter = "instant";
+					} else {
+						parameterQueueFilter = "regular";
+					}
+					argsOkCount += 2;
+				}
 				if (args[argsi].equals("-relationid")) {
 					parameterOSMRelationid = Long.parseLong(args[argsi + 1]);
 					argsOkCount += 2;
@@ -385,6 +431,9 @@ public class Evaluation {
 		evaluation.setHousenumberAdditionCaseSensity(parameterHousenumbersCaseSensity);
 		evaluation.setUselanguagecode(parameterLanguagecode);
 
+		//evaluation.setOnlyPartOfStreetnameSeparator(" - ");	// special settings for addr:street Values, when there are two languages in one value
+		//evaluation.setOnlyPartOfStreetnameIndexNo(1);			// special settings for addr:street Values, when there are two languages in one value
+
 
 		HousenumberCollection list_housenumbers = new HousenumberCollection();
 		HousenumberCollection osm_housenumbers = new HousenumberCollection();
@@ -417,10 +466,15 @@ public class Evaluation {
 			HousenumberServerAPI hnrserver = new HousenumberServerAPI();
 			List<Job> jobs;
 	
-			if(parameterAllMissingJobs)
+			if(parameterAllMissingJobs) {
 				jobs = hnrserver.getMissingCountryJobs(parameterCountry);
-			else
+			} else if(parameterGetQueueJobs) {
+				if(parameterMaxJobs == -1)
+					parameterMaxJobs = 5;
+				jobs = hnrserver.getQueueJobs(parameterQueueFilter, parameterMaxJobs);
+			} else {
 				jobs = hnrserver.findJobs(parameterCountry,parameterMunicipiality, parameterJobname, parameterOfficialkeysId);
+			}
 			logger.log(Level.INFO, "Number of Jobs received from Server: " + jobs.size());
 			
 			java.util.Date jobstart = new java.util.Date();

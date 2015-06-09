@@ -302,6 +302,9 @@ public class OsmDataReader {
 				public void complete() {
 					logger.log(Level.FINEST, "hallo Sink.complete  aktiv:    nodes #"+nodes_count+"   ways #"+ways_count+"   relations #"+relations_count);
 
+        			Integer onlyPartOfStreetnameIndexNo = evaluation.getOnlyPartOfStreetnameIndexNo();
+        			String onlyPartOfStreetnameSeparator = evaluation.getOnlyPartOfStreetnameSeparator();
+					
 						// loop over all osm node objects
 	    	    	for (Map.Entry<Long, Node> nodemap: gibmirnodes.entrySet()) {
 	    				Long objectid = nodemap.getKey();
@@ -315,8 +318,15 @@ public class OsmDataReader {
 		        			//System.out.println("way #" + objectid + ": Tag [" + tag.getKey() + "] ==="+tag.getValue()+"===");
 		        			keyvalues.put(tag.getKey(), tag.getValue());
 			        		if(		tag.getKey().equals("addr:street")
-			        			||	tag.getKey().equals("addr:place"))
-			        			address_street = tag.getValue();
+			        			||	tag.getKey().equals("addr:place")) {
+			        			if(onlyPartOfStreetnameIndexNo != -1) {
+			        				String streetnameParts[] = tag.getValue().split(onlyPartOfStreetnameSeparator);
+			        				if(streetnameParts.length >= (onlyPartOfStreetnameIndexNo+1))
+			        					address_street = streetnameParts[onlyPartOfStreetnameIndexNo];
+			        			} else {
+			        				address_street = tag.getValue();
+			        			}
+			        		}
 			        		if(!evaluation.getUselanguagecode().equals("")) {
 				        		if(		tag.getKey().equals("addr:street:" + evaluation.getUselanguagecode())
 				        			||	tag.getKey().equals("addr:place:" + evaluation.getUselanguagecode()))
@@ -378,8 +388,15 @@ public class OsmDataReader {
 		        			//System.out.println("way #" + objectid + ": Tag [" + tag.getKey() + "] ==="+tag.getValue()+"===");
 		        			keyvalues.put(tag.getKey(), tag.getValue());
 			        		if(		tag.getKey().equals("addr:street")
-			        			||	tag.getKey().equals("addr:place"))
-			        			address_street = tag.getValue();
+			        			||	tag.getKey().equals("addr:place")) {
+			        			if(onlyPartOfStreetnameIndexNo != -1) {
+			        				String streetnameParts[] = tag.getValue().split(onlyPartOfStreetnameSeparator);
+			        				if(streetnameParts.length >= (onlyPartOfStreetnameIndexNo+1))
+			        					address_street = streetnameParts[onlyPartOfStreetnameIndexNo];
+			        			} else {
+			        				address_street = tag.getValue();
+			        			}
+		        			}
 			        		if(!evaluation.getUselanguagecode().equals("")) {
 				        		if(		tag.getKey().equals("addr:street:" + evaluation.getUselanguagecode())
 				        			||	tag.getKey().equals("addr:place:" + evaluation.getUselanguagecode()))
@@ -444,8 +461,15 @@ public class OsmDataReader {
 		        			//System.out.println("relation #" + objectid + ": Tag [" + tag.getKey() + "] ==="+tag.getValue()+"===");
 		        			keyvalues.put(tag.getKey(), tag.getValue());
 			        		if(		tag.getKey().equals("addr:street")
-			        			||	tag.getKey().equals("addr:place"))
-			        			address_street = tag.getValue();
+			        			||	tag.getKey().equals("addr:place")) {
+			        			if(onlyPartOfStreetnameIndexNo != -1) {
+			        				String streetnameParts[] = tag.getValue().split(onlyPartOfStreetnameSeparator);
+			        				if(streetnameParts.length >= (onlyPartOfStreetnameIndexNo+1))
+			        					address_street = streetnameParts[onlyPartOfStreetnameIndexNo];
+			        			} else {
+			        				address_street = tag.getValue();
+			        			}
+			        		}
 			        		if(!evaluation.getUselanguagecode().equals("")) {
 				        		if(		tag.getKey().equals("addr:street:" + evaluation.getUselanguagecode())
 				        			||	tag.getKey().equals("addr:place:" + evaluation.getUselanguagecode()))
