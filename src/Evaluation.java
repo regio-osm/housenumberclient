@@ -5,7 +5,14 @@
  * 	
 */
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
+import java.text.DateFormat;
 import java.util.Date;
 import java.util.List;
 import java.util.logging.ConsoleHandler;
@@ -257,6 +264,8 @@ public class Evaluation {
 
 		java.util.Date programStart = new java.util.Date();
 
+		DateFormat dateformat = DateFormat.getDateTimeInstance();
+		
 		String parameterCountry = "Bundesrepublik Deutschland";
 		String parameterAdminHierarchy = "";
 		String parameterMunicipiality = "";
@@ -376,6 +385,7 @@ public class Evaluation {
 			relativePathToApplicationConfiguration = "./";
 		}
 		Applicationconfiguration configuration = new Applicationconfiguration(relativePathToApplicationConfiguration);
+		File importworkPathandFilenameHandle = null;
 
 		try {
 			Handler handler = new ConsoleHandler();
@@ -409,6 +419,24 @@ public class Evaluation {
 			fhandler.setLevel(configuration.logging_file_level);
 			logger.addHandler(fhandler);
 			logger.setLevel(configuration.logging_console_level);
+
+		
+				// set working filename to be sure, that only one instance is running in one file directory:
+				//   both important for overpass requests and at least for -queuejobs mode
+			String filename = "";
+			String importworkPathandFilename = "evaluation.active";
+			String importworkoutputline = "";
+			importworkPathandFilenameHandle = new File(importworkPathandFilename);
+			if(importworkPathandFilenameHandle.exists() && !importworkPathandFilenameHandle.isDirectory()) {
+				System.out.println("Evaluation already active, stopp processing of this program");
+				return;
+			}
+			PrintWriter workprogressOutput = new PrintWriter(new BufferedWriter(new OutputStreamWriter(
+					new FileOutputStream(importworkPathandFilename, true),StandardCharsets.UTF_8)));
+			workprogressOutput.println("Start of Evaluation: " + dateformat.format(new Date()));
+			workprogressOutput.close();
+//TODO working file workprogressOutput should be updated with jobs, which have been finished
+		
 		} catch (IOException e) {
 			System.out.println("Fehler beim Logging-Handler erstellen, ...");
 			System.out.println(e.toString());
@@ -566,6 +594,13 @@ public class Evaluation {
 					+ (jobend.getTime() - jobstart.getTime())/1000);
 			}
 		}	// end of else case (client/serer mode)
+
+		if(importworkPathandFilenameHandle.exists() && !importworkPathandFilenameHandle.isDirectory()) {
+			String destinationworkPathandFilename = "evaluation.finished";
+			File destinationworkPathandFilenameHandle = new File(destinationworkPathandFilename);
+			importworkPathandFilenameHandle.renameTo(destinationworkPathandFilenameHandle);
+			System.out.println("Batchimport progress file renamed to finish-state");
+		}
 
 		java.util.Date programEnd = new java.util.Date();
 		logger.log(Level.INFO, "Program finished at " + programEnd.toString() + ", Duration in sec: "
