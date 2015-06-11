@@ -526,10 +526,8 @@ public class HousenumberServerAPI {
 			urlParameters += "&" + "subid=" + URLEncoder.encode(evaluation.getSubid(),"UTF-8");
 			urlParameters += "&" + "adminlevel=" + evaluation.getAdminLevel();
 			urlParameters += "&" + "jobname=" + URLEncoder.encode(evaluation.getJobname(),"UTF-8");
-			if(! evaluation.getOfficialkeysId().equals(""))
-				urlParameters += "&" + "officialkeysid=" + URLEncoder.encode(evaluation.getOfficialkeysId(),"UTF-8");
-			if(! evaluation.getServerobjectid().equals(""))
-				urlParameters += "&" + "serverobjectid=" + URLEncoder.encode(evaluation.getServerobjectid(),"UTF-8");
+			urlParameters += "&" + "officialkeysid=" + URLEncoder.encode(evaluation.getOfficialkeysId(),"UTF-8");
+			urlParameters += "&" + "serverobjectid=" + URLEncoder.encode(evaluation.getServerobjectid(),"UTF-8");
 
 			OutputStreamWriter writer = new OutputStreamWriter(connection.getOutputStream());
 			System.out.println("upload_string==="+urlParameters+"===");
