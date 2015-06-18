@@ -192,7 +192,15 @@ public class OsmDataReader {
 			do {
 				try {
 					url = new URL(url_string);
-		
+
+					if(numberfailedtries > 0) {
+						logger.log(Level.WARNING, "sleeping now for " + (2 * numberfailedtries) + " seconds before Overpass-Query will be tried again, now: " 
+							+ new java.util.Date().toString());
+						TimeUnit.SECONDS.sleep(2 * numberfailedtries);
+						logger.log(Level.WARNING, "ok, slept for " + (2 * numberfailedtries) + " seconds before Overpass-Query will be tried again, now: "
+							+ new java.util.Date().toString());
+					}
+					
 					urlConn = url.openConnection(); 
 					urlConn.setDoInput(true); 
 					urlConn.setUseCaches(false);
@@ -217,21 +225,23 @@ public class OsmDataReader {
 						+ (numberfailedtries + 1) + ", Request URL was ===" + url_string + "===, Details follows ...");					
 					logger.log(Level.WARNING, mue.toString());
 					numberfailedtries++;
-					TimeUnit.SECONDS.sleep(2);
 					if(numberfailedtries > 3) {
 						logger.log(Level.SEVERE, "Overpass API didn't delivered data, gave up after 3 failed requests, Request URL was ===" + url_string + "===");
 						return null;
 					}
+					//logger.log(Level.WARNING, "sleeping now for " + (2 * numberfailedtries) + " seconds before Overpass-Query will be tried again");
+					//TimeUnit.SECONDS.sleep(2 * numberfailedtries);
 				} catch (IOException ioe) {
 					logger.log(Level.WARNING, "Overpass API request produced an Input/Output Exception  (Request #" 
 						+ (numberfailedtries + 1) + ", Request URL was ===" + url_string + "===, Details follows ...");					
 					logger.log(Level.WARNING, ioe.toString());
 					numberfailedtries++;
-					TimeUnit.SECONDS.sleep(2);
 					if(numberfailedtries > 3) {
 						logger.log(Level.SEVERE, "Overpass API didn't delivered data, gave up after 3 failed requests, Request URL was ===" + url_string + "===");
 						return null;
 					}
+					//logger.log(Level.WARNING, "sleeping now for " + (2 * numberfailedtries) + " seconds before Overpass-Query will be tried again");
+					//TimeUnit.SECONDS.sleep(2 * numberfailedtries);
 				}
 			} while(! finishedoverpassquery);
 	
