@@ -594,12 +594,18 @@ public class Evaluation {
 					+ (jobend.getTime() - jobstart.getTime())/1000);
 			}
 		}	// end of else case (client/serer mode)
-
 		if(importworkPathandFilenameHandle.exists() && !importworkPathandFilenameHandle.isDirectory()) {
 			String destinationworkPathandFilename = "evaluation.finished";
 			File destinationworkPathandFilenameHandle = new File(destinationworkPathandFilename);
-			importworkPathandFilenameHandle.renameTo(destinationworkPathandFilenameHandle);
-			System.out.println("Batchimport progress file renamed to finish-state");
+			if(importworkPathandFilenameHandle.renameTo(destinationworkPathandFilenameHandle))
+				System.out.println("Batchimport progress file renamed to finish-state");
+			else {
+				System.out.println("ERROR: Batchimport progress file couldn't renamed to finish-state !!!");
+				if(importworkPathandFilenameHandle.delete())
+					System.out.println("Info: Batchimport progress file was killed as fallback, because it couldn't renamed to finish-state");
+				else
+					System.out.println("ERROR: Batchimport progress file couldn't be deleted, housenumberclient will be locked  !!!");
+			}
 		}
 
 		java.util.Date programEnd = new java.util.Date();
