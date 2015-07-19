@@ -158,8 +158,9 @@ public class OsmDataReader {
 		gibmirrelations.clear();
 		
 		
-		String overpass_url = "http://overpass-api.de";
-		String overpass_queryurl = "/api/interpreter?data=";
+		//String overpass_url = "http://overpass-api.de/api/";
+		String overpass_url = "http://overpass.osm.rambler.ru/cgi/";
+		String overpass_queryurl = "interpreter?data=";
 		String overpass_query = "[timeout:3600][maxsize:1073741824]\n"
 			+ "[out:xml];\n"
 			+ "area(" + (3600000000L + relationsid) + ")->.boundaryarea;\n"
