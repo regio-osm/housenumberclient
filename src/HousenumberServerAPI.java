@@ -136,16 +136,21 @@ public class HousenumberServerAPI {
 			
 			BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream(),java.nio.charset.Charset.forName("UTF-8")));
 			System.out.println("getcontentencoding ===" + connection.getContentEncoding() + "===");
-			String fileline = "";
-			while((fileline = reader.readLine()) != null) {
-				System.out.println(fileline);
-				if(fileline.equals(""))
-					continue;
-				String linecolumns[] = fileline.split("\t");
-				
-				Job actjob = new Job(linecolumns[0], linecolumns[1], linecolumns[2], 
-					Integer.parseInt(linecolumns[3]), linecolumns[4], linecolumns[5], Long.parseLong(linecolumns[6]));
-				foundjobs.add(actjob);
+				// check, if Content metainfo is evailable (null, if no oder incomplete content)
+			if(connection.getContentEncoding() == null) {
+				System.out.println("WARNING: no Contentencoding available, so content missing or incomplete, will be ignored");
+			} else {
+				String fileline = "";
+				while((fileline = reader.readLine()) != null) {
+					System.out.println(fileline);
+					if(fileline.equals(""))
+						continue;
+					String linecolumns[] = fileline.split("\t");
+					
+					Job actjob = new Job(linecolumns[0], linecolumns[1], linecolumns[2], 
+						Integer.parseInt(linecolumns[3]), linecolumns[4], linecolumns[5], Long.parseLong(linecolumns[6]));
+					foundjobs.add(actjob);
+				}
 			}
 			writer.close();
 			reader.close();
@@ -221,16 +226,21 @@ public class HousenumberServerAPI {
 			
 			BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream(),java.nio.charset.Charset.forName("UTF-8")));
 			System.out.println("getcontentencoding ===" + connection.getContentEncoding() + "===");
-			String fileline = "";
-			while((fileline = reader.readLine()) != null) {
-				System.out.println(fileline);
-				if(fileline.equals(""))
-					continue;
-				String linecolumns[] = fileline.split("\t");
-				
-				Job actjob = new Job(linecolumns[0], linecolumns[1], linecolumns[2], 
-					Integer.parseInt(linecolumns[3]), linecolumns[4], linecolumns[5], Long.parseLong(linecolumns[6]), linecolumns[7]);
-				foundjobs.add(actjob);
+				// check, if Content metainfo is evailable (null, if no oder incomplete content)
+			if(connection.getContentEncoding() == null) {
+				System.out.println("WARNING: no Contentencoding available, so content missing or incomplete, will be ignored");
+			} else {
+				String fileline = "";
+				while((fileline = reader.readLine()) != null) {
+					System.out.println(fileline);
+					if(fileline.equals(""))
+						continue;
+					String linecolumns[] = fileline.split("\t");
+					
+					Job actjob = new Job(linecolumns[0], linecolumns[1], linecolumns[2], 
+						Integer.parseInt(linecolumns[3]), linecolumns[4], linecolumns[5], Long.parseLong(linecolumns[6]), linecolumns[7]);
+					foundjobs.add(actjob);
+				}
 			}
 			writer.close();
 			reader.close();

@@ -446,170 +446,191 @@ public class Evaluation {
 			logger.log(Level.FINE, "args[" + lfdnr + "] ===" + args[lfdnr] + "===");
 		}
 
-		parameterAdminHierarchy = parameterAdminHierarchy.replace("*", "%");
-		parameterMunicipiality = parameterMunicipiality.replace("*", "%");
-		parameterJobname = parameterJobname.replace("*", "%");
-		parameterOfficialkeysId = parameterOfficialkeysId.replace("*", "%");
-
-		HousenumberlistReader hnrreader = new HousenumberlistReader();
-		OsmDataReader osmreader = new OsmDataReader();
-		Evaluation evaluation = new Evaluation();
-
-		evaluation.setMunicipality(parameterCountry, parameterMunicipiality);
-		evaluation.setHousenumberAdditionCaseSensity(parameterHousenumbersCaseSensity);
-		evaluation.setUselanguagecode(parameterLanguagecode);
-
-		//evaluation.setOnlyPartOfStreetnameSeparator(" - ");	// special settings for addr:street Values, when there are two languages in one value
-		//evaluation.setOnlyPartOfStreetnameIndexNo(1);			// special settings for addr:street Values, when there are two languages in one value
-
-
-		HousenumberCollection list_housenumbers = new HousenumberCollection();
-		HousenumberCollection osm_housenumbers = new HousenumberCollection();
-		HousenumberCollection evaluated_housenumbers = new HousenumberCollection();
-
-			// local file, work offline (only connect to osm data via overpass
-		if(! parameterImportdateiname.equals("")) {
-			// client-server mode, connect to regio-osm.de Server and API and get jobs
-			if(parameterCountry.equals("Netherland")) {
-				list_housenumbers.setFieldsForUniqueAddress(HousenumberCollection.FieldsForUniqueAddress.STREET_POSTCODE_HOUSENUMBER);
-				list_housenumbers.addFieldsForUniqueAddress("NetherlandAlternative", HousenumberCollection.FieldsForUniqueAddress.STREET_HOUSENUMBER);
-			} else if(parameterCountry.equals("Italia")) {
-				list_housenumbers.setFieldsForUniqueAddress(HousenumberCollection.FieldsForUniqueAddress.STREET_HOUSENUMBER);
-				list_housenumbers.addFieldsForUniqueAddress("Italia---Language-de", HousenumberCollection.FieldsForUniqueAddress.STREETLOCALIZED_HOUSENUMBER);
-			} else {
-				list_housenumbers.setFieldsForUniqueAddress(HousenumberCollection.FieldsForUniqueAddress.STREET_HOUSENUMBER);
-				list_housenumbers.setAlternateFieldsForUniqueAddress(null);
-			}
-			list_housenumbers = hnrreader.ReadListFromFile(evaluation, parameterImportdateiname, parameterFieldSeparator, parameterHousenumbersCaseSensity);
-			osm_housenumbers.setFieldsForUniqueAddress(list_housenumbers.getFieldsForUniqueAddress());
-			HousenumberCollection tempreceived_osm_housenumbers = osmreader.ReadDataFromOverpass(evaluation, osm_housenumbers, parameterOSMRelationid);
-			if(tempreceived_osm_housenumbers != null) {
-				osm_housenumbers = tempreceived_osm_housenumbers;
-				evaluated_housenumbers = list_housenumbers.merge(osm_housenumbers, list_housenumbers.getAlternateFieldsForUniqueAddress());
-				evaluated_housenumbers.printhtml("evaluation.html");
-				logger.log(Level.INFO, "Number of housenumberlist entries after load of official housenumber list: "
-					+ evaluation.housenumberlist.length() + "   " + evaluation.housenumberlist.count_unchanged());
-			}
-		} else {
-			HousenumberServerAPI hnrserver = new HousenumberServerAPI();
-			List<Job> jobs;
+		try {
+			parameterAdminHierarchy = parameterAdminHierarchy.replace("*", "%");
+			parameterMunicipiality = parameterMunicipiality.replace("*", "%");
+			parameterJobname = parameterJobname.replace("*", "%");
+			parameterOfficialkeysId = parameterOfficialkeysId.replace("*", "%");
 	
-			if(parameterAllMissingJobs) {
-				jobs = hnrserver.getMissingCountryJobs(parameterCountry);
-			} else if(parameterGetQueueJobs) {
-				if(parameterMaxJobs == -1)
-					parameterMaxJobs = 5;
-				jobs = hnrserver.getQueueJobs(parameterQueueFilter, parameterMaxJobs);
-			} else {
-				jobs = hnrserver.findJobs(parameterCountry,parameterMunicipiality, parameterJobname, parameterOfficialkeysId);
-			}
-			logger.log(Level.INFO, "Number of Jobs received from Server: " + jobs.size());
-			
-			java.util.Date jobstart = new java.util.Date();
-			java.util.Date jobend = new java.util.Date();
+			HousenumberlistReader hnrreader = new HousenumberlistReader();
+			OsmDataReader osmreader = new OsmDataReader();
+			Evaluation evaluation = new Evaluation();
 	
-			for(int jobindex = 0; jobindex < jobs.size(); jobindex++) {
-				if((parameterMaxJobs != -1) && (parameterMaxJobs < (jobindex + 1))) {
-					logger.log(Level.INFO, "maximum number of jobs, as specified, arrived. Stop further processing");
-					break;
-				}
-				if(parameterMaxMinutes != -1) {
-					Long maxTime = programStart.getTime() + parameterMaxMinutes * 60 * 1000;
-					java.util.Date now = new java.util.Date();
-					if(now.getTime() > maxTime) {
-						logger.log(Level.INFO, "maximum time, as specified, arrived. Stop further processing");
-						break;
-					} else {
-						logger.log(Level.FINEST, "Info: specified limit of minutes not arrived, useable minutes to work: " + Math.round((maxTime - now.getTime())/60/1000));
-					}
-				}
+			evaluation.setMunicipality(parameterCountry, parameterMunicipiality);
+			evaluation.setHousenumberAdditionCaseSensity(parameterHousenumbersCaseSensity);
+			evaluation.setUselanguagecode(parameterLanguagecode);
 	
-				Job actjob = jobs.get(jobindex);
-				evaluation.setJobData(actjob);
-								
-				jobstart = new java.util.Date();
-				logger.log(Level.INFO, "start working on job " + actjob.toString() + "; started at " + jobstart.toString());
+			//evaluation.setOnlyPartOfStreetnameSeparator(" - ");	// special settings for addr:street Values, when there are two languages in one value
+			//evaluation.setOnlyPartOfStreetnameIndexNo(1);			// special settings for addr:street Values, when there are two languages in one value
 	
-				evaluation.setHousenumberAdditionCaseSensity(false);
-
-				list_housenumbers.clear();
-				osm_housenumbers.clear();
-				evaluated_housenumbers.clear();
-				
-				
-				java.util.Date dbloadstart = new java.util.Date();
-				list_housenumbers.clear();
-				//list_housenumbers = hnrreader.ReadListFromDB(evaluation);
+	
+			HousenumberCollection list_housenumbers = new HousenumberCollection();
+			HousenumberCollection osm_housenumbers = new HousenumberCollection();
+			HousenumberCollection evaluated_housenumbers = new HousenumberCollection();
+	
+				// local file, work offline (only connect to osm data via overpass
+			if(! parameterImportdateiname.equals("")) {
+				// client-server mode, connect to regio-osm.de Server and API and get jobs
 				if(parameterCountry.equals("Netherland")) {
 					list_housenumbers.setFieldsForUniqueAddress(HousenumberCollection.FieldsForUniqueAddress.STREET_POSTCODE_HOUSENUMBER);
-					list_housenumbers.setAlternateFieldsForUniqueAddress(HousenumberCollection.FieldsForUniqueAddress.POSTCODE_HOUSENUMBER);
+					list_housenumbers.addFieldsForUniqueAddress("NetherlandAlternative", HousenumberCollection.FieldsForUniqueAddress.STREET_HOUSENUMBER);
+				} else if(parameterCountry.equals("Italia")) {
+					list_housenumbers.setFieldsForUniqueAddress(HousenumberCollection.FieldsForUniqueAddress.STREET_HOUSENUMBER);
+					list_housenumbers.addFieldsForUniqueAddress("Italia---Language-de", HousenumberCollection.FieldsForUniqueAddress.STREETLOCALIZED_HOUSENUMBER);
 				} else {
 					list_housenumbers.setFieldsForUniqueAddress(HousenumberCollection.FieldsForUniqueAddress.STREET_HOUSENUMBER);
 					list_housenumbers.setAlternateFieldsForUniqueAddress(null);
 				}
-				list_housenumbers = hnrserver.ReadListFromServer(evaluation, list_housenumbers);
-				logger.log(Level.INFO, "Number of official housenumbers: " + list_housenumbers.length());
-				if(list_housenumbers.length() == 0) {
-					logger.log(Level.WARNING, "Warning: job will be ignored, because no official housenumbers found for job " + actjob.toString() + "; started at " + jobstart.toString());
-					continue;
-				}
-				java.util.Date dbloadend = new java.util.Date();
-				java.util.Date overpassloadstart = new java.util.Date();
-				osm_housenumbers.clear();
+				list_housenumbers = hnrreader.ReadListFromFile(evaluation, parameterImportdateiname, parameterFieldSeparator, parameterHousenumbersCaseSensity);
 				osm_housenumbers.setFieldsForUniqueAddress(list_housenumbers.getFieldsForUniqueAddress());
-				osm_housenumbers.setAlternateFieldsForUniqueAddress(list_housenumbers.getAlternateFieldsForUniqueAddress());
-
-				HousenumberCollection tempreceived_osm_housenumbers = osmreader.ReadDataFromOverpass(evaluation, osm_housenumbers, actjob.osmrelationid);
-				if(tempreceived_osm_housenumbers == null) {
-					logger.log(Level.WARNING, "Warning: job will be ignored, because request to overpass for osm housenumbers failed for job " + actjob.toString() + "; started at " + jobstart.toString());
-					continue;
+				HousenumberCollection tempreceived_osm_housenumbers = osmreader.ReadDataFromOverpass(evaluation, osm_housenumbers, parameterOSMRelationid);
+				if(tempreceived_osm_housenumbers != null) {
+					osm_housenumbers = tempreceived_osm_housenumbers;
+					evaluated_housenumbers = list_housenumbers.merge(osm_housenumbers, list_housenumbers.getAlternateFieldsForUniqueAddress());
+					evaluated_housenumbers.printhtml("evaluation.html");
+					logger.log(Level.INFO, "Number of housenumberlist entries after load of official housenumber list: "
+						+ evaluation.housenumberlist.length() + "   " + evaluation.housenumberlist.count_unchanged());
 				}
-				osm_housenumbers = tempreceived_osm_housenumbers;
-				logger.log(Level.INFO, "Number of OSM housenumbers: " + osm_housenumbers.length());
-				evaluation.evaluationtime = overpassloadstart.getTime();
-				java.util.Date overpassloadend = new java.util.Date();
-				java.util.Date mergedatastart = new java.util.Date();
-				evaluated_housenumbers.clear();
-				evaluated_housenumbers = list_housenumbers.merge(osm_housenumbers, list_housenumbers.getAlternateFieldsForUniqueAddress());
-				java.util.Date mergedataend = new java.util.Date();
-				evaluated_housenumbers.printhtml("test.html");
+			} else {
+				HousenumberServerAPI hnrserver = new HousenumberServerAPI();
+				List<Job> jobs;
+		
+				if(parameterAllMissingJobs) {
+					jobs = hnrserver.getMissingCountryJobs(parameterCountry);
+				} else if(parameterGetQueueJobs) {
+					if(parameterMaxJobs == -1)
+						parameterMaxJobs = 5;
+					jobs = hnrserver.getQueueJobs(parameterQueueFilter, parameterMaxJobs);
+				} else {
+					jobs = hnrserver.findJobs(parameterCountry,parameterMunicipiality, parameterJobname, parameterOfficialkeysId);
+				}
+				logger.log(Level.INFO, "Number of Jobs received from Server: " + jobs.size());
+				
+				java.util.Date jobstart = new java.util.Date();
+				java.util.Date jobend = new java.util.Date();
+		
+				for(int jobindex = 0; jobindex < jobs.size(); jobindex++) {
+					if((parameterMaxJobs != -1) && (parameterMaxJobs < (jobindex + 1))) {
+						logger.log(Level.INFO, "maximum number of jobs, as specified, arrived. Stop further processing");
+						break;
+					}
+					if(parameterMaxMinutes != -1) {
+						Long maxTime = programStart.getTime() + parameterMaxMinutes * 60 * 1000;
+						java.util.Date now = new java.util.Date();
+						if(now.getTime() > maxTime) {
+							logger.log(Level.INFO, "maximum time, as specified, arrived. Stop further processing");
+							break;
+						} else {
+							logger.log(Level.FINEST, "Info: specified limit of minutes not arrived, useable minutes to work: " + Math.round((maxTime - now.getTime())/60/1000));
+						}
+					}
+		
+					Job actjob = jobs.get(jobindex);
+					evaluation.setJobData(actjob);
+									
+					jobstart = new java.util.Date();
+					logger.log(Level.INFO, "start working on job " + actjob.toString() + "; started at " + jobstart.toString());
+		
+					evaluation.setHousenumberAdditionCaseSensity(false);
 	
-				int lfdnr = 0;
-				java.util.Date uploadstart = null;
-				java.util.Date uploadend = null;
-				//while(lfdnr < 1000) {
-					lfdnr++;
-					logger.log(Level.FINE, "upload Nr. " + lfdnr);
-					uploadstart = new java.util.Date();
-					hnrserver.writeEvaluationToServer(evaluation, evaluated_housenumbers);
-					uploadend = new java.util.Date();
-				//}
-				logger.log(Level.INFO, "time for db load time in sek: " + (dbloadend.getTime() - dbloadstart.getTime())/1000);
-				logger.log(Level.INFO, "time for overpass load time in sek: " + (overpassloadend.getTime() - overpassloadstart.getTime())/1000);
-				logger.log(Level.INFO, "time for internal merge time in sek: " + (mergedataend.getTime() - mergedatastart.getTime())/1000);
-				logger.log(Level.INFO, "time for result upload time in sek: " + (uploadend.getTime() - uploadstart.getTime())/1000);
+					list_housenumbers.clear();
+					osm_housenumbers.clear();
+					evaluated_housenumbers.clear();
+					
+					
+					java.util.Date dbloadstart = new java.util.Date();
+					list_housenumbers.clear();
+					//list_housenumbers = hnrreader.ReadListFromDB(evaluation);
+					if(parameterCountry.equals("Netherland")) {
+						list_housenumbers.setFieldsForUniqueAddress(HousenumberCollection.FieldsForUniqueAddress.STREET_POSTCODE_HOUSENUMBER);
+						list_housenumbers.setAlternateFieldsForUniqueAddress(HousenumberCollection.FieldsForUniqueAddress.POSTCODE_HOUSENUMBER);
+					} else {
+						list_housenumbers.setFieldsForUniqueAddress(HousenumberCollection.FieldsForUniqueAddress.STREET_HOUSENUMBER);
+						list_housenumbers.setAlternateFieldsForUniqueAddress(null);
+					}
+					list_housenumbers = hnrserver.ReadListFromServer(evaluation, list_housenumbers);
+					logger.log(Level.INFO, "Number of official housenumbers: " + list_housenumbers.length());
+					if(list_housenumbers.length() == 0) {
+						logger.log(Level.WARNING, "Warning: job will be ignored, because no official housenumbers found for job " + actjob.toString() + "; started at " + jobstart.toString());
+						continue;
+					}
+					java.util.Date dbloadend = new java.util.Date();
+					java.util.Date overpassloadstart = new java.util.Date();
+					osm_housenumbers.clear();
+					osm_housenumbers.setFieldsForUniqueAddress(list_housenumbers.getFieldsForUniqueAddress());
+					osm_housenumbers.setAlternateFieldsForUniqueAddress(list_housenumbers.getAlternateFieldsForUniqueAddress());
 	
-				jobend = new java.util.Date();
-				logger.log(Level.INFO, "finished working on job " + actjob.toString() + "; ended at " + jobend.toString() + " duration in sec: " 
-					+ (jobend.getTime() - jobstart.getTime())/1000);
+					HousenumberCollection tempreceived_osm_housenumbers = osmreader.ReadDataFromOverpass(evaluation, osm_housenumbers, actjob.osmrelationid);
+					if(tempreceived_osm_housenumbers == null) {
+						logger.log(Level.WARNING, "Warning: job will be ignored, because request to overpass for osm housenumbers failed for job " + actjob.toString() + "; started at " + jobstart.toString());
+						continue;
+					}
+					osm_housenumbers = tempreceived_osm_housenumbers;
+					logger.log(Level.INFO, "Number of OSM housenumbers: " + osm_housenumbers.length());
+					evaluation.evaluationtime = overpassloadstart.getTime();
+					java.util.Date overpassloadend = new java.util.Date();
+					java.util.Date mergedatastart = new java.util.Date();
+					evaluated_housenumbers.clear();
+					evaluated_housenumbers = list_housenumbers.merge(osm_housenumbers, list_housenumbers.getAlternateFieldsForUniqueAddress());
+					java.util.Date mergedataend = new java.util.Date();
+					evaluated_housenumbers.printhtml("test.html");
+		
+					int lfdnr = 0;
+					java.util.Date uploadstart = null;
+					java.util.Date uploadend = null;
+					//while(lfdnr < 1000) {
+						lfdnr++;
+						logger.log(Level.FINE, "upload Nr. " + lfdnr);
+						uploadstart = new java.util.Date();
+						hnrserver.writeEvaluationToServer(evaluation, evaluated_housenumbers);
+						uploadend = new java.util.Date();
+					//}
+					logger.log(Level.INFO, "time for db load time in sek: " + (dbloadend.getTime() - dbloadstart.getTime())/1000);
+					logger.log(Level.INFO, "time for overpass load time in sek: " + (overpassloadend.getTime() - overpassloadstart.getTime())/1000);
+					logger.log(Level.INFO, "time for internal merge time in sek: " + (mergedataend.getTime() - mergedatastart.getTime())/1000);
+					logger.log(Level.INFO, "time for result upload time in sek: " + (uploadend.getTime() - uploadstart.getTime())/1000);
+		
+					jobend = new java.util.Date();
+					logger.log(Level.INFO, "finished working on job " + actjob.toString() + "; ended at " + jobend.toString() + " duration in sec: " 
+						+ (jobend.getTime() - jobstart.getTime())/1000);
+				}
+			}	// end of else case (client/serer mode)
+			if(importworkPathandFilenameHandle.exists() && !importworkPathandFilenameHandle.isDirectory()) {
+				String destinationworkPathandFilename = "evaluation.finished";
+				File destinationworkPathandFilenameHandle = new File(destinationworkPathandFilename);
+				if(importworkPathandFilenameHandle.renameTo(destinationworkPathandFilenameHandle))
+					System.out.println("Batchimport progress file renamed to finish-state");
+				else {
+					System.out.println("ERROR: Batchimport progress file couldn't renamed to finish-state !!!");
+					if(importworkPathandFilenameHandle.delete())
+						System.out.println("Info: Batchimport progress file was killed as fallback, because it couldn't renamed to finish-state");
+					else
+						System.out.println("ERROR: Batchimport progress file couldn't be deleted, housenumberclient will be locked  !!!");
+				}
 			}
-		}	// end of else case (client/serer mode)
-		if(importworkPathandFilenameHandle.exists() && !importworkPathandFilenameHandle.isDirectory()) {
-			String destinationworkPathandFilename = "evaluation.finished";
-			File destinationworkPathandFilenameHandle = new File(destinationworkPathandFilename);
-			if(importworkPathandFilenameHandle.renameTo(destinationworkPathandFilenameHandle))
-				System.out.println("Batchimport progress file renamed to finish-state");
-			else {
-				System.out.println("ERROR: Batchimport progress file couldn't renamed to finish-state !!!");
-				if(importworkPathandFilenameHandle.delete())
-					System.out.println("Info: Batchimport progress file was killed as fallback, because it couldn't renamed to finish-state");
-				else
-					System.out.println("ERROR: Batchimport progress file couldn't be deleted, housenumberclient will be locked  !!!");
-			}
+	
+			java.util.Date programEnd = new java.util.Date();
+			logger.log(Level.INFO, "Program finished at " + programEnd.toString() + ", Duration in sec: "
+				+ (programEnd.getTime() - programStart.getTime())/1000);
 		}
+		catch (Exception e) {
+			System.out.println("ERROR: Generic Exception happened in main client, Details ...");
+			e.printStackTrace();
 
-		java.util.Date programEnd = new java.util.Date();
-		logger.log(Level.INFO, "Program finished at " + programEnd.toString() + ", Duration in sec: "
-			+ (programEnd.getTime() - programStart.getTime())/1000);
+			if(importworkPathandFilenameHandle.exists() && !importworkPathandFilenameHandle.isDirectory()) {
+				String destinationworkPathandFilename = "evaluation.finished";
+				File destinationworkPathandFilenameHandle = new File(destinationworkPathandFilename);
+				if(importworkPathandFilenameHandle.renameTo(destinationworkPathandFilenameHandle))
+					System.out.println("Batchimport progress file renamed to finish-state");
+				else {
+					System.out.println("ERROR: Batchimport progress file couldn't renamed to finish-state !!!");
+					if(importworkPathandFilenameHandle.delete())
+						System.out.println("Info: Batchimport progress file was killed as fallback, because it couldn't renamed to finish-state");
+					else
+						System.out.println("ERROR: Batchimport progress file couldn't be deleted, housenumberclient will be locked  !!!");
+				}
+			}
+			return;
+		}
 	}
 }
