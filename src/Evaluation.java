@@ -527,7 +527,12 @@ public class Evaluation {
 		
 					Job actjob = jobs.get(jobindex);
 					evaluation.setJobData(actjob);
-									
+						//TODO change this fix code to other kind of coding
+						// FIX Code for Italia, Region Südtirol: for jobs in this area, use german language code
+					if(		evaluation.country.equals("Italia") 
+							&& 	evaluation.officialkeysId.substring(0,3).equals("021"))
+						evaluation.setUselanguagecode("DE");
+
 					jobstart = new java.util.Date();
 					logger.log(Level.INFO, "start working on job " + actjob.toString() + "; started at " + jobstart.toString());
 		
@@ -544,6 +549,11 @@ public class Evaluation {
 					if(parameterCountry.equals("Netherland")) {
 						list_housenumbers.setFieldsForUniqueAddress(HousenumberCollection.FieldsForUniqueAddress.STREET_POSTCODE_HOUSENUMBER);
 						list_housenumbers.setAlternateFieldsForUniqueAddress(HousenumberCollection.FieldsForUniqueAddress.POSTCODE_HOUSENUMBER);
+					} else if(	(parameterCountry.equals("Italia") || evaluation.country.equals("Italia"))
+							&& 	evaluation.officialkeysId.substring(0,3).equals("021")) {
+						list_housenumbers.setFieldsForUniqueAddress(HousenumberCollection.FieldsForUniqueAddress.STREET_HOUSENUMBER);
+						//new code, still in development list_housenumbers.addFieldsForUniqueAddress("Italia---Language-de", HousenumberCollection.FieldsForUniqueAddress.STREETLOCALIZED_HOUSENUMBER);
+						list_housenumbers.setAlternateFieldsForUniqueAddress(HousenumberCollection.FieldsForUniqueAddress.STREETLOCALIZED_HOUSENUMBER);
 					} else {
 						list_housenumbers.setFieldsForUniqueAddress(HousenumberCollection.FieldsForUniqueAddress.STREET_HOUSENUMBER);
 						list_housenumbers.setAlternateFieldsForUniqueAddress(null);
