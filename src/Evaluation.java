@@ -148,7 +148,8 @@ public class Evaluation {
 	 * @param uselanguagecode
 	 */
 	public void setUselanguagecode(String uselanguagecode) {
-		this.uselanguagecode = uselanguagecode;
+		if(!uselanguagecode.equals(""))
+			this.uselanguagecode = uselanguagecode.toLowerCase();
 	}
 
 
@@ -474,9 +475,6 @@ public class Evaluation {
 				if(parameterCountry.equals("Netherland")) {
 					list_housenumbers.setFieldsForUniqueAddress(HousenumberCollection.FieldsForUniqueAddress.STREET_POSTCODE_HOUSENUMBER);
 					list_housenumbers.addFieldsForUniqueAddress("NetherlandAlternative", HousenumberCollection.FieldsForUniqueAddress.STREET_HOUSENUMBER);
-				} else if(parameterCountry.equals("Italia")) {
-					list_housenumbers.setFieldsForUniqueAddress(HousenumberCollection.FieldsForUniqueAddress.STREET_HOUSENUMBER);
-					list_housenumbers.addFieldsForUniqueAddress("Italia---Language-de", HousenumberCollection.FieldsForUniqueAddress.STREETLOCALIZED_HOUSENUMBER);
 				} else {
 					list_housenumbers.setFieldsForUniqueAddress(HousenumberCollection.FieldsForUniqueAddress.STREET_HOUSENUMBER);
 					list_housenumbers.setAlternateFieldsForUniqueAddress(null);
@@ -549,11 +547,6 @@ public class Evaluation {
 					if(parameterCountry.equals("Netherland")) {
 						list_housenumbers.setFieldsForUniqueAddress(HousenumberCollection.FieldsForUniqueAddress.STREET_POSTCODE_HOUSENUMBER);
 						list_housenumbers.setAlternateFieldsForUniqueAddress(HousenumberCollection.FieldsForUniqueAddress.POSTCODE_HOUSENUMBER);
-					} else if(	(parameterCountry.equals("Italia") || evaluation.country.equals("Italia"))
-							&& 	evaluation.officialkeysId.substring(0,3).equals("021")) {
-						list_housenumbers.setFieldsForUniqueAddress(HousenumberCollection.FieldsForUniqueAddress.STREET_HOUSENUMBER);
-						//new code, still in development list_housenumbers.addFieldsForUniqueAddress("Italia---Language-de", HousenumberCollection.FieldsForUniqueAddress.STREETLOCALIZED_HOUSENUMBER);
-						list_housenumbers.setAlternateFieldsForUniqueAddress(HousenumberCollection.FieldsForUniqueAddress.STREETLOCALIZED_HOUSENUMBER);
 					} else {
 						list_housenumbers.setFieldsForUniqueAddress(HousenumberCollection.FieldsForUniqueAddress.STREET_HOUSENUMBER);
 						list_housenumbers.setAlternateFieldsForUniqueAddress(null);

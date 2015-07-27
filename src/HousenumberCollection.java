@@ -263,7 +263,7 @@ public class HousenumberCollection {
 			String thiskey = entry.getKey();
 			Housenumber listhousenumber = entry.getValue();
 			Housenumber newhousenumber = listhousenumber;
-			if(osmhousenumbers.cache.containsKey(thiskey)) {
+			if(!thiskey.equals("") && osmhousenumbers.cache.containsKey(thiskey)) {
 				Housenumber foundosmhousenumber = osmhousenumbers.cache.get(thiskey);
 				newhousenumber.setTreffertyp(Housenumber.Treffertyp.IDENTICAL);
 				newhousenumber.set_osm_tag_rawvalues(foundosmhousenumber);
@@ -276,7 +276,7 @@ public class HousenumberCollection {
 					mergedhousenumbers.add_newentry(listhousenumber);
 				} else {
 					String thisAlternateKey = listhousenumber.getAlternateListKey();
-					if(osmhousenumbers.alternatecache.containsKey(thisAlternateKey)) {
+					if(!thisAlternateKey.equals("") && osmhousenumbers.alternatecache.containsKey(thisAlternateKey)) {
 						String primaryKey = osmhousenumbers.alternatecache.get(thisAlternateKey);
 						Housenumber foundosmhousenumber = osmhousenumbers.cache.get(primaryKey);
 						newhousenumber.setTreffertyp(Housenumber.Treffertyp.IDENTICAL);
