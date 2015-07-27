@@ -125,7 +125,8 @@ public class Housenumber {
 		if(this.alternateFieldsForUniqueAddress == null)
 			return "";
 
-		if(this.alternateFieldsForUniqueAddress.compareTo(HousenumberCollection.FieldsForUniqueAddress.STREET_HOUSENUMBER) == 0)
+		if(		(this.alternateFieldsForUniqueAddress.compareTo(HousenumberCollection.FieldsForUniqueAddress.STREET_HOUSENUMBER) == 0)
+			||	(this.alternateFieldsForUniqueAddress.compareTo(HousenumberCollection.FieldsForUniqueAddress.STREETLOCALIZED_HOUSENUMBER) == 0))
 			listkey = this.getStrasse().toLowerCase() + this.getHausnummerSortierbar().toLowerCase();
 		else if(this.alternateFieldsForUniqueAddress.compareTo(HousenumberCollection.FieldsForUniqueAddress.STREET_POSTCODE_HOUSENUMBER) == 0)
 			listkey = this.getStrasse().toLowerCase()  + this.getPostcode().toLowerCase() + this.getHausnummerSortierbar().toLowerCase();
