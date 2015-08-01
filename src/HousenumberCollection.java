@@ -443,21 +443,36 @@ public class HousenumberCollection {
 		for (Map.Entry<String,Housenumber> entry : cache.entrySet()) {
 			Housenumber housenumber = entry.getValue();
 
-			actrecord = housenumber.getStrasse() + fieldseparator
-				+	housenumber.getPostcode() + fieldseparator
-				+	housenumber.getHausnummer() + fieldseparator
-				+	housenumber.getTreffertypText() + fieldseparator
+			actrecord = escape_specialchars_for_output(housenumber.getStrasse()) + fieldseparator
+				+	escape_specialchars_for_output(housenumber.getPostcode()) + fieldseparator
+				+	escape_specialchars_for_output(housenumber.getHausnummer()) + fieldseparator
+				+	escape_specialchars_for_output(housenumber.getTreffertypText()) + fieldseparator
 				+	housenumber.getOsmId() + fieldseparator
-				+	housenumber.getOsmObjektart() + fieldseparator
-				+	housenumber.getOsmTag() + fieldseparator
+				+	escape_specialchars_for_output(housenumber.getOsmObjektart()) + fieldseparator
+				+	escape_specialchars_for_output(housenumber.getOsmTag()) + fieldseparator
 				+	housenumber.get_osm_tag_prio() + fieldseparator
-				+	housenumber.getLonlat() + fieldseparator;
+				+	escape_specialchars_for_output(housenumber.getLonlat()) + fieldseparator;
 			outputbuffer.append(actrecord + "\n");
 		}
 		
 		return outputbuffer.toString();
 	}
 	
+	private String escape_specialchars_for_output(String text) {
+		String outputtext = text;
+		outputtext = outputtext.replace("\n"," ");
+		outputtext = outputtext.replace("\t"," ");
+		if(!outputtext.equals(text)) {
+				//TODO print out as error
+			System.out.println("specialchars escaped from ===" + text + "=== to ===" + outputtext + "===");
+		}
+		if(outputtext.indexOf("&#x") != -1) {
+				//TODO print out as error
+			System.out.println("entities found in string ===" + text + "===");
+		}
+		return outputtext;
+	}
+
 
 
 	private String auswerten(Integer anzahlIdentisch, Integer anzahlSoll) {
