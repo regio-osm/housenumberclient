@@ -158,8 +158,9 @@ public class OsmDataReader {
 		gibmirrelations.clear();
 		
 		
-		String overpass_url = "http://overpass-api.de/api/";
+		//String overpass_url = "http://overpass-api.de/api/";
 		//String overpass_url = "http://overpass.osm.rambler.ru/cgi/";
+		String overpass_url = "http://dev.overpass-api.de/api_mmd/";
 		String overpass_queryurl = "interpreter?data=";
 		String overpass_query = "[timeout:3600][maxsize:1073741824]\n"
 			+ "[out:xml];\n"
@@ -436,7 +437,6 @@ public class OsmDataReader {
 								osmhousenumber.setHausnummer(address_housenumber);
 								String objectlonlat = centroid_lon + " " + centroid_lat;
 								osmhousenumber.setLonlat(objectlonlat);
-	//set centroid or something similar from way object   osmhousenumber.setLonlat(rs_objekte.getString("lonlat"));
 								osmhousenumber.setLonlat_source("OSM");
 								osmhousenumber.setTreffertyp(Housenumber.Treffertyp.OSM_ONLY);
 	
@@ -467,6 +467,8 @@ public class OsmDataReader {
 		        		String address_streetlocalized = "";
 		        		String address_postcode = "";
 		        		String address_housenumber = "";
+		        		String centroid_lon = "";
+		        		String centroid_lat = "";
 		        		HashMap<String,String> keyvalues = new HashMap<String,String>();
 		        		for (Tag tag: tags) {
 		        			//System.out.println("relation #" + objectid + ": Tag [" + tag.getKey() + "] ==="+tag.getValue()+"===");
@@ -490,6 +492,10 @@ public class OsmDataReader {
 			        			address_postcode = tag.getValue().replace(" ", "");
 			        		if(tag.getKey().equals("addr:housenumber"))
 			        			address_housenumber = tag.getValue();
+			        		if(tag.getKey().equals("centroid_lon"))
+			        			centroid_lon = tag.getValue();
+			        		if(tag.getKey().equals("centroid_lat"))
+			        			centroid_lat = tag.getValue();
 						}
 						if(!address_housenumber.equals("")) {
 							if(!address_street.equals("")) {
@@ -502,8 +508,11 @@ public class OsmDataReader {
 								osmhousenumber.setPostcode(address_postcode);
 								osmhousenumber.set_osm_tag(keyvalues);
 								osmhousenumber.setHausnummer(address_housenumber);
-		//set centroid or something similar from way object   osmhousenumber.setLonlat(rs_objekte.getString("lonlat"));
-								osmhousenumber.setLonlat_source("OSM");
+								if(!centroid_lon.equals("")) {
+									String objectlonlat = centroid_lon + " " + centroid_lat;
+									osmhousenumber.setLonlat(objectlonlat);
+									osmhousenumber.setLonlat_source("OSM");
+								}
 								osmhousenumber.setTreffertyp(Housenumber.Treffertyp.OSM_ONLY);
 	
 								if(address_housenumber.indexOf(",") != -1)
@@ -564,13 +573,11 @@ public class OsmDataReader {
 						Integer lfdnr = 0;
 						Double lon_sum = 0.0D;
 						Double lat_sum = 0.0D;
-						List<Point> points = new LinkedList<Point>();
 						for (WayNode waynode: actwaynodes) {
 							Node actnode = gibmirnodes.get(waynode.getNodeId());
 							Point actpoint = new Point(actnode.getLongitude(), actnode.getLatitude());
 							lon_sum += actnode.getLongitude();
 							lat_sum += actnode.getLatitude();
-							points.add(actpoint);
 							//System.out.println(" Node # " + lfdnr + "    id: " + actnode.getId() + "    lon: " + actnode.getLongitude() + "   lat: "+actnode.getLatitude());
 							lfdnr++;
 						}
@@ -598,6 +605,7 @@ public class OsmDataReader {
 		        		Collection<Tag> relationtags = entity.getTags();
 		        		String relationType = "";
 		        		String relationName = "";
+		        		boolean relationContainsAddrhousenumber = false;
 						for (Tag tag: relationtags) {
 		        			//System.out.println("Tag [" + tag.getKey() + "] ==="+tag.getValue()+"===");
 		        			if(	tag.getKey().equals("type"))
@@ -605,7 +613,7 @@ public class OsmDataReader {
 		        			if(	tag.getKey().equals("name"))
 		        				relationName = tag.getValue();
 		        			if(tag.getKey().equals("addr:housenumber"))
-				    			gibmirrelations.put(entity.getId(), relation);
+		        				relationContainsAddrhousenumber = true;
 						}
 
 						if(		! relationType.equals("associatedStreet")
@@ -619,6 +627,9 @@ public class OsmDataReader {
 							return;
 			        	}
 
+						Integer lfdnr = 0;
+						Double lon_sum = 0.0D;
+						Double lat_sum = 0.0D;
 			        	for(int memberi = 0; memberi < relmembers.size(); memberi++) {
 			        		RelationMember actmember = relmembers.get(memberi);
 			        		EntityType memberType = actmember.getMemberType();
@@ -663,14 +674,17 @@ public class OsmDataReader {
 									Way actway = gibmirways.get(memberId);
 									List<WayNode> actwaynodes = actway.getWayNodes();
 									//System.out.println("Weg enthält Anzahl knoten: "+actwaynodes.size());
-									Integer lfdnr = 0;
-									List<Point> points = new LinkedList<Point>();
+									//List<Point> points = new LinkedList<Point>();
 									for (WayNode waynode: actwaynodes) {
 										Node actnode = gibmirnodes.get(waynode.getNodeId());
-										Point actpoint = new Point(actnode.getLongitude(), actnode.getLatitude());
-										points.add(actpoint);
+										if(!actmember.getMemberRole().equals("inner")) {
+											lon_sum += actnode.getLongitude();
+											lat_sum += actnode.getLatitude();
+											lfdnr++;
+										}
+										//Point actpoint = new Point(actnode.getLongitude(), actnode.getLatitude());
+										//points.add(actpoint);
 										//System.out.println(" Node # " + lfdnr + "    id: " + actnode.getId() + "    lon: " + actnode.getLongitude() + "   lat: "+actnode.getLatitude());
-										lfdnr++;
 									}
 									/*
 									WayGeometryBuilder waygeombuilder = new WayGeometryBuilder(NodeLocationStoreType.TempFile);
@@ -680,6 +694,14 @@ public class OsmDataReader {
 									 */
 			    				}
 			    			}
+			        	} // lloop over alle relation members
+			        		// if relation contains a housenumber (so its not an assocatedStreet relation, but a multipolygon with address)
+			        	if(relationContainsAddrhousenumber) {
+							Double centroid_lon = lon_sum / lfdnr;
+							Double centroid_lat = lat_sum / lfdnr;
+							relationtags.add(new Tag("centroid_lon", centroid_lon.toString()));
+							relationtags.add(new Tag("centroid_lat", centroid_lat.toString()));
+			    			gibmirrelations.put(entity.getId(), relation);
 			        	}
 			        }
 				}
