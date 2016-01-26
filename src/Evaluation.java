@@ -551,6 +551,10 @@ public class Evaluation {
 						list_housenumbers.setFieldsForUniqueAddress(HousenumberCollection.FieldsForUniqueAddress.STREET_HOUSENUMBER);
 						list_housenumbers.setAlternateFieldsForUniqueAddress(null);
 					}
+if(parameterMunicipiality.equals("Köln")) {
+	list_housenumbers.setFieldsForUniqueAddress(HousenumberCollection.FieldsForUniqueAddress.STREET_POSTCODE_HOUSENUMBER);
+	list_housenumbers.addFieldsForUniqueAddress("NetherlandAlternative", HousenumberCollection.FieldsForUniqueAddress.STREET_HOUSENUMBER);
+}
 					list_housenumbers = hnrserver.ReadListFromServer(evaluation, list_housenumbers);
 					logger.log(Level.INFO, "Number of official housenumbers: " + list_housenumbers.length());
 					if(list_housenumbers.length() == 0) {
