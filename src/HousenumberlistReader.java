@@ -178,7 +178,6 @@ public class HousenumberlistReader {
 			String dateizeile;
 			long zeilenr = 0;
 
-			boolean geocoordindatesavailable = false;
 			int spaltenindexStadt = -1;
 			int spaltenindexAgs = -1;
 			int spaltenindexStrasse = 0;

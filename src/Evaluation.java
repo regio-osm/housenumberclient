@@ -388,6 +388,11 @@ public class Evaluation {
 		Applicationconfiguration configuration = new Applicationconfiguration(relativePathToApplicationConfiguration);
 		File importworkPathandFilenameHandle = null;
 
+		PrintWriter workprogressOutput = null;
+		String importworkPathandFilename = "evaluation.active";
+		PrintWriter munininfoOutput = null;
+		String munininfoPathandFilename = "evaluationprogress.txt";
+		
 		try {
 			Handler handler = new ConsoleHandler();
 			handler.setFormatter(new Formatter() {
@@ -425,14 +430,26 @@ public class Evaluation {
 				// set working filename to be sure, that only one instance is running in one file directory:
 				//   both important for overpass requests and at least for -queuejobs mode
 			String filename = "";
-			String importworkPathandFilename = "evaluation.active";
 			String importworkoutputline = "";
 			importworkPathandFilenameHandle = new File(importworkPathandFilename);
 			if(importworkPathandFilenameHandle.exists() && !importworkPathandFilenameHandle.isDirectory()) {
-				System.out.println("Evaluation already active, stopp processing of this program");
-				return;
+				Long filedate_milliseconds = importworkPathandFilenameHandle.lastModified();
+				Long nowdate_milliseconds = new Date().getTime();
+				System.out.println("filedate_msec ===" + filedate_milliseconds + "===");
+				System.out.println("nowdate msec  ===" + nowdate_milliseconds + "===");
+				System.out.println("diff now minus filedate msec ===" + (nowdate_milliseconds - filedate_milliseconds));
+				System.out.println("diff now minus filedate sec ===" + (nowdate_milliseconds - filedate_milliseconds)/1000);
+				Long maxtimeAssumeSystemWorks_milliseconds = (long) (30 * 60 * 1000);		// 30 minutes
+				if((nowdate_milliseconds - filedate_milliseconds) > maxtimeAssumeSystemWorks_milliseconds) {
+					System.out.println("Evaluation active File found, but to old (in sec: " + ((nowdate_milliseconds - filedate_milliseconds)/1000) + "), it will be deleted");
+					importworkPathandFilenameHandle.delete();
+					importworkPathandFilenameHandle = new File(importworkPathandFilename);
+				} else {
+					System.out.println("Evaluation already active, stopp processign of this program");
+					return;
+				}
 			}
-			PrintWriter workprogressOutput = new PrintWriter(new BufferedWriter(new OutputStreamWriter(
+			workprogressOutput = new PrintWriter(new BufferedWriter(new OutputStreamWriter(
 					new FileOutputStream(importworkPathandFilename, true),StandardCharsets.UTF_8)));
 			workprogressOutput.println("Start of Evaluation: " + dateformat.format(new Date()));
 			workprogressOutput.close();
@@ -503,10 +520,15 @@ public class Evaluation {
 					jobs = hnrserver.findJobs(parameterCountry,parameterMunicipiality, parameterJobname, parameterOfficialkeysId);
 				}
 				logger.log(Level.INFO, "Number of Jobs received from Server: " + jobs.size());
-				
+
+					// initialize munin file with number of jobs and nothing done yet
+				munininfoOutput = new PrintWriter(new BufferedWriter(new OutputStreamWriter(new FileOutputStream(munininfoPathandFilename),StandardCharsets.UTF_8)));
+				munininfoOutput.println("0" + " " +  jobs.size() + " " + jobs.size());
+				munininfoOutput.close();
+
 				java.util.Date jobstart = new java.util.Date();
 				java.util.Date jobend = new java.util.Date();
-		
+
 				for(int jobindex = 0; jobindex < jobs.size(); jobindex++) {
 					if((parameterMaxJobs != -1) && (parameterMaxJobs < (jobindex + 1))) {
 						logger.log(Level.INFO, "maximum number of jobs, as specified, arrived. Stop further processing");
@@ -523,6 +545,7 @@ public class Evaluation {
 						}
 					}
 		
+
 					Job actjob = jobs.get(jobindex);
 					evaluation.setJobData(actjob);
 						//TODO change this fix code to other kind of coding
@@ -582,21 +605,30 @@ if(parameterMunicipiality.equals("Köln")) {
 					java.util.Date mergedataend = new java.util.Date();
 					evaluated_housenumbers.printhtml("test.html");
 		
-					int lfdnr = 0;
 					java.util.Date uploadstart = null;
 					java.util.Date uploadend = null;
-					//while(lfdnr < 1000) {
-						lfdnr++;
-						logger.log(Level.FINE, "upload Nr. " + lfdnr);
-						uploadstart = new java.util.Date();
-						hnrserver.writeEvaluationToServer(evaluation, evaluated_housenumbers);
-						uploadend = new java.util.Date();
-					//}
+					uploadstart = new java.util.Date();
+					hnrserver.writeEvaluationToServer(evaluation, evaluated_housenumbers);
+					uploadend = new java.util.Date();
+						
+					String importworkoutputline = "";
+					importworkoutputline = actjob.municipality + "/" + actjob.jobname + "\t" + dateformat.format(jobstart) + "\t";
+					importworkoutputline += dateformat.format(uploadend) + "\t" + "successful";
+					workprogressOutput = new PrintWriter(new BufferedWriter(new OutputStreamWriter(
+							new FileOutputStream(importworkPathandFilename, true),StandardCharsets.UTF_8)));
+					workprogressOutput.println(importworkoutputline);
+					workprogressOutput.close();
+
+
+					munininfoOutput = new PrintWriter(new BufferedWriter(new OutputStreamWriter(new FileOutputStream(munininfoPathandFilename),StandardCharsets.UTF_8)));
+					munininfoOutput.println((jobindex + 1) + " " +  (jobs.size() - jobindex - 1) + " " + jobs.size());
+					munininfoOutput.close();
+
 					logger.log(Level.INFO, "time for db load time in sek: " + (dbloadend.getTime() - dbloadstart.getTime())/1000);
 					logger.log(Level.INFO, "time for overpass load time in sek: " + (overpassloadend.getTime() - overpassloadstart.getTime())/1000);
 					logger.log(Level.INFO, "time for internal merge time in sek: " + (mergedataend.getTime() - mergedatastart.getTime())/1000);
 					logger.log(Level.INFO, "time for result upload time in sek: " + (uploadend.getTime() - uploadstart.getTime())/1000);
-		
+
 					jobend = new java.util.Date();
 					logger.log(Level.INFO, "finished working on job " + actjob.toString() + "; ended at " + jobend.toString() + " duration in sec: " 
 						+ (jobend.getTime() - jobstart.getTime())/1000);
