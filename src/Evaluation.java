@@ -517,7 +517,7 @@ public class Evaluation {
 						parameterMaxJobs = 5;
 					jobs = hnrserver.getQueueJobs(parameterQueueFilter, parameterMaxJobs);
 				} else {
-					jobs = hnrserver.findJobs(parameterCountry,parameterMunicipiality, parameterJobname, parameterOfficialkeysId);
+					jobs = hnrserver.findJobs(parameterCountry,parameterMunicipiality, parameterJobname, parameterOfficialkeysId, parameterAdminHierarchy);
 				}
 				logger.log(Level.INFO, "Number of Jobs received from Server: " + jobs.size());
 
