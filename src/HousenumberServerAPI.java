@@ -74,7 +74,7 @@ public class HousenumberServerAPI {
 			serverUrl += "/";
 	}
 	
-	public List<Job> findJobs(String country, String municipality, String jobname, String officialkeys_id) {
+	public List<Job> findJobs(String country, String municipality, String jobname, String officialkeys_id, String adminhierarchy) {
 		List<Job> foundjobs = new ArrayList<Job>();
 
 		java.util.Date sendToServerStarttime = new java.util.Date();
@@ -108,6 +108,10 @@ public class HousenumberServerAPI {
 			    temptoutput.append("Content-Disposition: form-data; name=\"officialkeys\"" + "\r\n");
 			    temptoutput.append("\r\n");
 			    temptoutput.append(officialkeys_id + "\r\n");
+				temptoutput.append("--" + boundary + "\r\n");
+				temptoutput.append("Content-Disposition: form-data; name=\"adminhierarchy\"" + "\r\n");
+				temptoutput.append("\r\n");
+				temptoutput.append(adminhierarchy + "\r\n");
 			    temptoutput.append("--" + boundary + "--" + "\r\n");
 			    int laststartpos = (temptoutput.toString().length() > 8000) ? 8000: temptoutput.toString().length();
 			    int firstendpos = (temptoutput.toString().length() > 1000) ? temptoutput.toString().length() - 1000 : 0;
