@@ -23,7 +23,10 @@ import java.util.logging.Level;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 
+import org.openstreetmap.osmosis.core.bound.v0_6.BoundComputer;
+
 import de.regioosm.housenumbers.Applicationconfiguration;
+
 
 
 public class Evaluation {
