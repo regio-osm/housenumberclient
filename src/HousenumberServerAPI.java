@@ -26,8 +26,7 @@ import java.nio.charset.StandardCharsets;
 
 
 
-
-import de.regioosm.housenumbers.Applicationconfiguration;
+import de.regioosm.housenumbers.*;
 /*
  * ATTENTION: upload of large files (at 01/2015 max 10 MB) can fails.
  * 			  on Server, tomcat7 must be configured to allow larger files.
