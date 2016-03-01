@@ -160,9 +160,9 @@ public class OsmDataReader {
 		gibmirrelations.clear();
 		
 		
-		//String overpass_url = "http://overpass-api.de/api/";
+		String overpass_url = "http://overpass-api.de/api/";
 		//String overpass_url = "http://overpass.osm.rambler.ru/cgi/";
-		String overpass_url = "http://dev.overpass-api.de/api_mmd/";
+		//String overpass_url = "http://dev.overpass-api.de/api_mmd/";
 		String overpass_queryurl = "interpreter?data=";
 		String overpass_query = "[timeout:3600][maxsize:1073741824]\n"
 			+ "[out:xml];\n"
