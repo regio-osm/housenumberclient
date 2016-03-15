@@ -518,7 +518,7 @@ public class Evaluation {
 				} else if(parameterGetQueueJobs) {
 					if(parameterMaxJobs == -1)
 						parameterMaxJobs = 5;
-					jobs = hnrserver.getQueueJobs(parameterQueueFilter, parameterMaxJobs);
+					jobs = hnrserver.getQueueJobs(evaluation, parameterQueueFilter, parameterMaxJobs);
 				} else {
 					jobs = hnrserver.findJobs(parameterCountry,parameterMunicipiality, parameterJobname, parameterOfficialkeysId, parameterAdminHierarchy);
 				}

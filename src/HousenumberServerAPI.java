@@ -175,7 +175,7 @@ public class HousenumberServerAPI {
 	}
 
 	
-	public List<Job> getQueueJobs(String requestfilter, Integer maxjobcount) {
+	public List<Job> getQueueJobs(Evaluation evaluation, String requestfilter, Integer maxjobcount) {
 		List<Job> foundjobs = new ArrayList<Job>();
 
 		java.util.Date sendToServerStarttime = new java.util.Date();
@@ -198,6 +198,12 @@ public class HousenumberServerAPI {
 			    temptoutput.append("\r\n");
 			    temptoutput.append(requestfilter + "\r\n");
 			    temptoutput.append("--" + boundary + "\r\n");
+			    if(!evaluation.getCountry().equals("")) {
+				    temptoutput.append("Content-Disposition: form-data; name=\"country\"" + "\r\n");
+				    temptoutput.append("\r\n");
+				    temptoutput.append(evaluation.getCountry() + "\r\n");
+				    temptoutput.append("--" + boundary + "\r\n");
+			    }
 			    temptoutput.append("Content-Disposition: form-data; name=\"maxjobcount\"" + "\r\n");
 			    temptoutput.append("\r\n");
 			    temptoutput.append(maxjobcount+ "\r\n");
