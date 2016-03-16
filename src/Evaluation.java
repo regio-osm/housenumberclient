@@ -32,6 +32,7 @@ import de.regioosm.housenumbers.Applicationconfiguration;
 public class Evaluation {
 	private final static long MINUTES_IN_MILLISECONDS = 60 * 1000;
 	private String country = "";
+	private String countrycode = "";
 	private String municipality = "";
 	private String officialkeysId = "";
 	private Integer adminLevel = 0;
@@ -49,6 +50,7 @@ public class Evaluation {
 
 	public void initialize() {
 		country = "";
+		countrycode = "";
 		municipality = "";
 		officialkeysId = "";
 		uselanguagecode = "";
@@ -65,6 +67,10 @@ public class Evaluation {
 		return this.country;
 	}
 	
+	public String getCountrycode() {
+		return this.countrycode;
+	}
+
 	public String getMunicipality() {
 		return this.municipality;
 	}
@@ -87,6 +93,10 @@ public class Evaluation {
 
 	public String getJobCountry() {
 		return this.country;
+	}
+
+	public String getJobCountrycode() {
+		return this.countrycode;
 	}
 
 	public String getJobMunicipality() {
@@ -144,8 +154,9 @@ public class Evaluation {
 	 * @param country
 	 * @param municipality
 	 */
-	public void setMunicipality(String country, String municipality) {
+	public void setMunicipality(String country, String countrycode, String municipality) {
 		this.country = country;
+		this.countrycode = countrycode;
 		this.municipality = municipality;
 		if(this.jobname.equals(""))
 			this.jobname = municipality;
@@ -156,8 +167,9 @@ public class Evaluation {
 	 * @param country
 	 * @param municipality
 	 */
-	public void setMunicipalityAndJobname(String country, String municipality, String jobname) {
+	public void setMunicipalityAndJobname(String country, String countrycode, String municipality, String jobname) {
 		this.country = country;
+		this.countrycode = countrycode;
 		this.municipality = municipality;
 		this.jobname = jobname;
 	}
@@ -197,6 +209,7 @@ public class Evaluation {
 	 */
 	public void setJobData(Job job) {
 		this.country = job.country;
+		this.countrycode = job.countrycode;
 		this.municipality = job.municipality;
 		this.officialkeysId = job.officialkeysId;
 		this.adminLevel = job.adminLevel;
@@ -313,7 +326,7 @@ public class Evaluation {
 		String parameterJobname = "";
 		String parameterOfficialkeysId = "";
 		String parameterLanguagecode = "";
-		String parameterOsmDatasource = "overpass";
+		String parameterOsmDatasource = "";
 		boolean parameterAllMissingJobs = false;
 		boolean parameterGetQueueJobs = false;
 		String parameterQueueFilter = "";
@@ -514,8 +527,7 @@ public class Evaluation {
 			OsmDataReader osmreader = new OsmDataReader();
 			Evaluation evaluation = new Evaluation();
 	
-			evaluation.setOsmdatasource(parameterOsmDatasource);
-			evaluation.setMunicipality(parameterCountry, parameterMunicipiality);
+			evaluation.setMunicipality(parameterCountry, "", parameterMunicipiality);
 			evaluation.setHousenumberAdditionCaseSensity(parameterHousenumbersCaseSensity);
 			evaluation.setUselanguagecode(parameterLanguagecode);
 	
@@ -570,6 +582,8 @@ public class Evaluation {
 				java.util.Date jobstart = new java.util.Date();
 				java.util.Date jobend = new java.util.Date();
 
+				osmreader.openDBConnection(configuration.db_osm2pgsql_url, configuration.db_osm2pgsql_username, configuration.db_osm2pgsql_password);
+				
 				for(int jobindex = 0; jobindex < jobs.size(); jobindex++) {
 					if((parameterMaxJobs != -1) && (parameterMaxJobs < (jobindex + 1))) {
 						logger.log(Level.INFO, "maximum number of jobs, as specified, arrived. Stop further processing");
@@ -585,15 +599,30 @@ public class Evaluation {
 							logger.log(Level.FINEST, "Info: specified limit of minutes not arrived, useable minutes to work: " + Math.round((maxTime - now.getTime())/60/1000));
 						}
 					}
-		
 
 					Job actjob = jobs.get(jobindex);
 					evaluation.setJobData(actjob);
-						//TODO change this fix code to other kind of coding
+					
+					if(parameterOsmDatasource.equals("")) {
+						if(evaluation.getCountry().equals("Ísland"))
+							evaluation.setOsmdatasource("db");
+						else
+							evaluation.setOsmdatasource("overpass");
+					} else {
+						evaluation.setOsmdatasource(parameterOsmDatasource);
+					}
+					
+					//TODO change this fix code to other kind of coding
 						// FIX Code for Italia, Region Südtirol: for jobs in this area, use german language code
-					if(		evaluation.country.equals("Italia") 
-							&& 	evaluation.officialkeysId.substring(0,3).equals("021"))
-						evaluation.setUselanguagecode("DE");
+					if(	evaluation.getCountry().equals("Italia")) {
+						if(evaluation.officialkeysId.substring(0,3).equals("021"))
+							evaluation.setUselanguagecode("DE");
+						else
+							evaluation.setUselanguagecode(evaluation.getJobCountrycode());
+					} else
+						evaluation.setUselanguagecode(evaluation.getJobCountrycode());
+
+						
 
 					jobstart = new java.util.Date();
 					logger.log(Level.INFO, "start working on job " + actjob.toString() + "; started at " + jobstart.toString());
@@ -631,7 +660,6 @@ if(parameterMunicipiality.equals("Köln")) {
 					osm_housenumbers.setFieldsForUniqueAddress(list_housenumbers.getFieldsForUniqueAddress());
 					osm_housenumbers.setAlternateFieldsForUniqueAddress(list_housenumbers.getAlternateFieldsForUniqueAddress());
 	
-					osmreader.openDBConnection(configuration.db_osm2pgsql_url, configuration.db_osm2pgsql_username, configuration.db_osm2pgsql_password);
 					HousenumberCollection tempreceived_osm_housenumbers = osmreader.ReadData(evaluation, osm_housenumbers, actjob.osmrelationid);
 					if(tempreceived_osm_housenumbers == null) {
 						logger.log(Level.WARNING, "Warning: job will be ignored, because request to overpass for osm housenumbers failed for job " + actjob.toString() + "; started at " + jobstart.toString());
@@ -689,7 +717,9 @@ if(parameterMunicipiality.equals("Köln")) {
 						System.out.println("ERROR: Batchimport progress file couldn't be deleted, housenumberclient will be locked  !!!");
 				}
 			}
-	
+			osmreader.printTimeDurations();
+			osmreader.closeDBConnection();
+
 			java.util.Date programEnd = new java.util.Date();
 			logger.log(Level.INFO, "Program finished at " + programEnd.toString() + ", Duration in sec: "
 				+ (programEnd.getTime() - programStart.getTime())/1000);

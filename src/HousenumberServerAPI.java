@@ -148,10 +148,14 @@ public class HousenumberServerAPI {
 					System.out.println(fileline);
 					if(fileline.equals(""))
 						continue;
+					if(fileline.substring(1,2).equals("#")) {
+						System.out.println("ignore comment line ===" + fileline + "===");
+						continue;
+					}
 					String linecolumns[] = fileline.split("\t");
 					
-					Job actjob = new Job(linecolumns[0], linecolumns[1], linecolumns[2], 
-						Integer.parseInt(linecolumns[3]), linecolumns[4], linecolumns[5], Long.parseLong(linecolumns[6]));
+					Job actjob = new Job(linecolumns[0], linecolumns[1], linecolumns[2], linecolumns[3], 
+						Integer.parseInt(linecolumns[4]), linecolumns[5], linecolumns[6], Long.parseLong(linecolumns[7]));
 					foundjobs.add(actjob);
 				}
 			}
@@ -244,10 +248,14 @@ public class HousenumberServerAPI {
 					System.out.println(fileline);
 					if(fileline.equals(""))
 						continue;
+					if(fileline.substring(1,2).equals("#")) {
+						System.out.println("ignore comment line ===" + fileline + "===");
+						continue;
+					}
 					String linecolumns[] = fileline.split("\t");
 					
-					Job actjob = new Job(linecolumns[0], linecolumns[1], linecolumns[2], 
-						Integer.parseInt(linecolumns[3]), linecolumns[4], linecolumns[5], Long.parseLong(linecolumns[6]), linecolumns[7]);
+					Job actjob = new Job(linecolumns[0], linecolumns[1], linecolumns[2], linecolumns[3], 
+						Integer.parseInt(linecolumns[4]), linecolumns[5], linecolumns[6], Long.parseLong(linecolumns[7]), linecolumns[8]);
 					foundjobs.add(actjob);
 				}
 			}
@@ -335,10 +343,14 @@ public class HousenumberServerAPI {
 				System.out.println(fileline);
 				if(fileline.equals(""))
 					continue;
+				if(fileline.substring(1,2).equals("#")) {
+					System.out.println("ignore comment line ===" + fileline + "===");
+					continue;
+				}
 				String linecolumns[] = fileline.split("\t");
 
-				Job actjob = new Job(linecolumns[0], linecolumns[1], linecolumns[2], 
-						Integer.parseInt(linecolumns[3]), linecolumns[4], linecolumns[5], Long.parseLong(linecolumns[6]));
+				Job actjob = new Job(linecolumns[0], linecolumns[1], linecolumns[2], linecolumns[3], 
+						Integer.parseInt(linecolumns[4]), linecolumns[5], linecolumns[6], Long.parseLong(linecolumns[7]));
 				foundjobs.add(actjob);
 			}
 			writer.close();
@@ -368,7 +380,7 @@ public class HousenumberServerAPI {
 		String filename = "";
 		try {
 				// first, save upload data as local file, just for checking or for history
-			DateFormat time_formatter = new SimpleDateFormat("yyyyMMdd-HHmmssZ");
+			DateFormat time_formatter = new SimpleDateFormat("yyyyMMdd-HHmmss-SZ");
 			String uploadtime = time_formatter.format(new Date());
 	
 			filename += configuration.application_datadir + File.separator +  "uploaddata" + File.separator + uploadtime + ".result";
