@@ -25,6 +25,7 @@ import java.util.List;
 
 public class Job {
 	public String country = "";
+	public String countrycode = "";
 	public String municipality = "";
 	public String officialkeysId = "";
 	public Integer adminLevel = 0;
@@ -35,6 +36,7 @@ public class Job {
 
 	public Job() {
 		this.country = "";
+		this.countrycode = "";
 		this.municipality = "";
 		this.officialkeysId = "";
 		this.adminLevel = 0;
@@ -44,8 +46,9 @@ public class Job {
 		this.serverobjectid = "";
 	}
 
-	public Job(String country, String municipality, String officialkeysId, Integer adminLevel, String jobname, String subid, Long relationid) {
+	public Job(String country, String countrycode, String municipality, String officialkeysId, Integer adminLevel, String jobname, String subid, Long relationid) {
 		this.country = country;
+		this.countrycode = countrycode;
 		this.municipality = municipality;
 		this.officialkeysId = officialkeysId;
 		this.adminLevel = adminLevel;
@@ -55,8 +58,9 @@ public class Job {
 		this.serverobjectid = serverobjectid;
 	}
 
-	public Job(String country, String municipality, String officialkeysId, Integer adminLevel, String jobname, String subid, Long relationid, String serverobjectid) {
+	public Job(String country, String countrycode, String municipality, String officialkeysId, Integer adminLevel, String jobname, String subid, Long relationid, String serverobjectid) {
 		this.country = country;
+		this.countrycode = countrycode;
 		this.municipality = municipality;
 		this.officialkeysId = officialkeysId;
 		this.adminLevel = adminLevel;
@@ -67,12 +71,11 @@ public class Job {
 	}
 
 	
-	private int index = 0;
 
 	List<Job> jobs = new ArrayList<Job>();
 
 	public String toString() {
-		String output = "country=" + country + ", municipality=" + municipality + ", officialkeysId=" + officialkeysId + ", "
+		String output = "country=" + country + ", countrycode=" + countrycode + ", municipality=" + municipality + ", officialkeysId=" + officialkeysId + ", "
 			+ "adminLevel=" + adminLevel + ", jobname=" + jobname + ", subid=" + subid + ", osmrelationid=" + osmrelationid;
 		return output; 
 	}

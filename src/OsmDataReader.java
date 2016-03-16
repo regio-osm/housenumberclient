@@ -89,6 +89,7 @@ public class OsmDataReader {
 	private static final int HAUSNUMMERSORTIERBARLENGTH = 4;
 	private static final Logger logger = Evaluation.logger;
 	static Connection con_mapnik = null;
+	static Connection con_housenumbers = null;
 
 	Applicationconfiguration configuration = new Applicationconfiguration("");
 
@@ -152,11 +153,27 @@ public class OsmDataReader {
 
 	public void closeDBConnection() {
 		try {
-			con_mapnik.close();
+			if(con_mapnik != null) {
+				logger.log(Level.INFO, "Connection to database" + con_mapnik.getMetaData().getURL() + "closed.");
+				con_mapnik.close();
+				con_mapnik = null;
+			}
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+
+		try {
+			if(con_housenumbers != null) {
+				logger.log(Level.INFO, "Connection to database" + con_housenumbers.getMetaData().getURL() + "closed.");
+				con_housenumbers.close();
+				con_housenumbers = null;
+			}
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
 		this.dbconnection = "";
 		this.dbusername = "";
 		this.dbpassword = "";
@@ -200,7 +217,6 @@ public class OsmDataReader {
 			if(con_mapnik == null)
 				openDBConnection(this.dbconnection, this.dbusername, this.dbpassword);
 			ReadDataFromDB(evaluation, housenumbers, relationsid);
-			closeDBConnection();
 			return housenumbers;
 		} else {
 			return new HousenumberCollection();
@@ -823,20 +839,21 @@ public class OsmDataReader {
 			return housenumbers;
 		}
 
-		Connection con_housenumbers = null;
-		String url_housenumbers = configuration.db_application_url;
-		try {
-			if(con_housenumbers == null) {
-				con_housenumbers = DriverManager.getConnection(url_housenumbers, configuration.db_application_username, configuration.db_application_password);
+		if(con_housenumbers == null) {
+			String url_housenumbers = configuration.db_application_url;
+			try {
+				if(con_housenumbers == null) {
+					con_housenumbers = DriverManager.getConnection(url_housenumbers, configuration.db_application_username, configuration.db_application_password);
+				}
+				logger.log(Level.INFO, "Connection to database " + url_housenumbers + " established.");
 			}
-			logger.log(Level.INFO, "Connection to database " + url_housenumbers + " established.");
-		}
-		catch (SQLException e) {
-			logger.log(Level.SEVERE, "ERROR: failed to connect to database " + url_housenumbers);
-			logger.log(Level.SEVERE, e.toString());
-			System.out.println("ERROR: failed to connect to database " + url_housenumbers);
-			System.out.println(e.toString());
-			return housenumbers;
+			catch (SQLException e) {
+				logger.log(Level.SEVERE, "ERROR: failed to connect to database " + url_housenumbers);
+				logger.log(Level.SEVERE, e.toString());
+				System.out.println("ERROR: failed to connect to database " + url_housenumbers);
+				System.out.println(e.toString());
+				return housenumbers;
+			}
 		}
 
 		Integer onlyPartOfStreetnameIndexNo = evaluation.getOnlyPartOfStreetnameIndexNo();
@@ -901,7 +918,7 @@ public class OsmDataReader {
 				pointsObjectsStmt.setString(statementIndex++, "addr:street:" + evaluation.getUselanguagecode());
 				preparedParameters += " [" + (statementIndex - 1) + "] ===" + "addr:street:" + evaluation.getUselanguagecode() + "===";
 				pointsObjectsStmt.setString(statementIndex++, "addr:place:" + evaluation.getUselanguagecode());
-				preparedParameters += " [" + (statementIndex - 1) + "] ===" + "addr:street:" + evaluation.getUselanguagecode() + "===";
+				preparedParameters += " [" + (statementIndex - 1) + "] ===" + "addr:place:" + evaluation.getUselanguagecode() + "===";
 			}
 			pointsObjectsStmt.setString(statementIndex++, polygonBinaryString);
 			preparedParameters += " [" + (statementIndex - 1) + "] ===((completepolygon))===";
@@ -916,7 +933,9 @@ public class OsmDataReader {
 			pointsQueryDuration += local_query_end.getTime() - local_query_start.getTime();
 			local_query_start = local_query_end;
 
+			Integer countFoundObjects = 0;
 			while( pointsObjectsRS.next() ) {
+				countFoundObjects++;
 				HStore hstore = new HStore(pointsObjectsRS.getString("tags"));
 				try {
 					HashMap<String,String> tags = (HashMap<String,String>) hstore.asMap();
@@ -1001,6 +1020,7 @@ public class OsmDataReader {
 			pointsObjectsRS.close();
 			pointsObjectsStmt.close();
 			local_query_end = new java.util.Date();
+			logger.log(Level.FINEST, "Number of osm point address objects: " + countFoundObjects);
 			logger.log(Level.FINEST, "TIME single-step analyzing osm-ways in ms. "+(local_query_end.getTime()-local_query_start.getTime()));
 			pointsAnalyzeDuration += local_query_end.getTime() - local_query_start.getTime();
 
@@ -1016,8 +1036,8 @@ public class OsmDataReader {
 			linesObjectsSql += " tags->'addr:postcode', tags->'addr:housenumber',"
 				+ " tags, ST_X(ST_Transform(ST_Centroid(way), 4326)) AS lon, ST_Y(ST_Transform(ST_Centroid(way), 4326)) AS lat"
 				+ " FROM planet_line WHERE"
-				+ " ST_Covers(?::geometry, way) AND"	// ST_Covers = complete inside
-				+ " ST_Crosses(?::geometry, way) AND"	// ST_Crosses = partly inside
+				+ " (ST_Covers(?::geometry, way) OR"	// ST_Covers = complete inside
+				+ " ST_Crosses(?::geometry, way)) AND"	// ST_Crosses = partly inside
 				+ " exist(tags, 'addr:housenumber');";
 	
 			PreparedStatement linesObjectsStmt = con_mapnik.prepareStatement(linesObjectsSql);
@@ -1028,8 +1048,10 @@ public class OsmDataReader {
 				linesObjectsStmt.setString(statementIndex++, "addr:street:" + evaluation.getUselanguagecode());
 				preparedParameters += " [" + (statementIndex - 1) + "] ===" + "addr:street:" + evaluation.getUselanguagecode() + "===";
 				linesObjectsStmt.setString(statementIndex++, "addr:place:" + evaluation.getUselanguagecode());
-				preparedParameters += " [" + (statementIndex - 1) + "] ===" + "addr:street:" + evaluation.getUselanguagecode() + "===";
+				preparedParameters += " [" + (statementIndex - 1) + "] ===" + "addr:place:" + evaluation.getUselanguagecode() + "===";
 			}
+			linesObjectsStmt.setString(statementIndex++, polygonBinaryString);
+			preparedParameters += " [" + (statementIndex - 1) + "] ===((completepolygon))===";
 			linesObjectsStmt.setString(statementIndex++, polygonBinaryString);
 			preparedParameters += " [" + (statementIndex - 1) + "] ===((completepolygon))===";
 			logger.log(Level.FINE, "Prepared statement parameters " + preparedParameters);
@@ -1043,7 +1065,9 @@ public class OsmDataReader {
 			linesQueryDuration += local_query_end.getTime() - local_query_start.getTime();
 			local_query_start = local_query_end;
 	
+			countFoundObjects = 0;
 			while( linesObjectsRS.next() ) {
+				countFoundObjects++;
 				HStore hstore = new HStore(linesObjectsRS.getString("tags"));
 				try {
 					HashMap<String,String> tags = (HashMap<String,String>) hstore.asMap();
@@ -1128,6 +1152,7 @@ public class OsmDataReader {
 			linesObjectsRS.close();
 			linesObjectsStmt.close();
 			local_query_end = new java.util.Date();
+			logger.log(Level.FINEST, "Number of osm line address objects: " + countFoundObjects);
 			logger.log(Level.FINEST, "TIME single-step analyzing osm-ways in ms. "+(local_query_end.getTime()-local_query_start.getTime()));
 			linesAnalyzeDuration += local_query_end.getTime() - local_query_start.getTime();
 		
@@ -1143,8 +1168,8 @@ public class OsmDataReader {
 			polygonsObjectsSql += " tags->'addr:postcode', tags->'addr:housenumber',"
 				+ " tags, ST_X(ST_Transform(ST_Centroid(way), 4326)) AS lon, ST_Y(ST_Transform(ST_Centroid(way), 4326)) AS lat"
 				+ " FROM planet_polygon WHERE"
-				+ " ST_Covers(?::geometry, way) AND"	// ST_Covers = complete inside
-				+ " ST_Crosses(?::geometry, way) AND"	// ST_Crosses = partly inside
+				+ " (ST_Covers(?::geometry, way) OR"	// ST_Covers = complete inside
+				+ " ST_Crosses(?::geometry, way)) AND"	// ST_Crosses = partly inside
 				+ " exist(tags, 'addr:housenumber');";
 		
 			PreparedStatement polygonsObjectsStmt = con_mapnik.prepareStatement(polygonsObjectsSql);
@@ -1155,8 +1180,10 @@ public class OsmDataReader {
 				polygonsObjectsStmt.setString(statementIndex++, "addr:street:" + evaluation.getUselanguagecode());
 				preparedParameters += " [" + (statementIndex - 1) + "] ===" + "addr:street:" + evaluation.getUselanguagecode() + "===";
 				polygonsObjectsStmt.setString(statementIndex++, "addr:place:" + evaluation.getUselanguagecode());
-				preparedParameters += " [" + (statementIndex - 1) + "] ===" + "addr:street:" + evaluation.getUselanguagecode() + "===";
+				preparedParameters += " [" + (statementIndex - 1) + "] ===" + "addr:place:" + evaluation.getUselanguagecode() + "===";
 			}
+			polygonsObjectsStmt.setString(statementIndex++, polygonBinaryString);
+			preparedParameters += " [" + (statementIndex - 1) + "] ===((completepolygon))===";
 			polygonsObjectsStmt.setString(statementIndex++, polygonBinaryString);
 			preparedParameters += " [" + (statementIndex - 1) + "] ===((completepolygon))===";
 			logger.log(Level.FINE, "Prepared statement parameters " + preparedParameters);
@@ -1170,7 +1197,9 @@ public class OsmDataReader {
 			polygonsQueryDuration += local_query_end.getTime() - local_query_start.getTime();
 			local_query_start = local_query_end;
 		
+			countFoundObjects = 0;
 			while( polygonsObjectsRS.next() ) {
+				countFoundObjects++;
 				HStore hstore = new HStore(polygonsObjectsRS.getString("tags"));
 				try {
 					HashMap<String,String> tags = (HashMap<String,String>) hstore.asMap();
@@ -1255,14 +1284,15 @@ public class OsmDataReader {
 			polygonsObjectsRS.close();
 			polygonsObjectsStmt.close();
 			local_query_end = new java.util.Date();
+			logger.log(Level.FINEST, "Number of osm polygon address objects: " + countFoundObjects);
 			logger.log(Level.FINEST, "TIME single-step analyzing osm-ways in ms. "+(local_query_end.getTime()-local_query_start.getTime()));
 			polygonsAnalyzeDuration += local_query_end.getTime() - local_query_start.getTime();
 
 		}
 		catch( SQLException sqle) {
-			logger.log(Level.SEVERE, "SQL-Exception occured, Details " + sqle.toString());
+			logger.log(Level.SEVERE, "SQL-Exception occured, Details \n" + sqle.toString());
 //TODO stored errors, like org.postgresql.util.PSQLException: ERROR: GEOS covers() threw an error!
-			System.out.println(sqle.toString());
+			System.out.println("SQL-Exception occured, Details \n" + sqle.toString());
 		}
 		return housenumbers;
 	}
