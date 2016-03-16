@@ -39,6 +39,7 @@ public class Evaluation {
 	private String subid = "";
 	private String serverobjectid = "";
 	private String uselanguagecode = "";
+	private String osmdatasource = "";
 	public Long evaluationtime = 0L;
 	public Long osmtime = 0L;
 	public HousenumberCollection housenumberlist = new HousenumberCollection();
@@ -54,6 +55,10 @@ public class Evaluation {
 		adminLevel = 0;
 		jobname = "";
 		housenumberlist.clear();
+	}
+
+	public String getOsmdatasource() {
+		return this.osmdatasource;
 	}
 
 	public String getCountry() {
@@ -80,6 +85,30 @@ public class Evaluation {
 		return this.jobname;
 	}
 
+	public String getJobCountry() {
+		return this.country;
+	}
+
+	public String getJobMunicipality() {
+		return this.municipality;
+	}
+	
+	public String getJobOfficialkeysId() {
+		return this.officialkeysId;
+	}
+	
+	public Integer getJobAdminlevel() {
+		return this.adminLevel;
+	}
+	
+	public String getJobSubid() {
+		return this.subid;
+	}
+	
+	public String getJobServerobjectid() {
+		return this.serverobjectid;
+	}
+
 	public String getSubid() {
 		return this.subid;
 	}
@@ -99,6 +128,12 @@ public class Evaluation {
 	public HousenumberCollection getHousenumberlist() {
 		return this.housenumberlist;
 	}
+
+
+	public void setOsmdatasource(String datasource) {
+		this.osmdatasource = datasource;
+	}
+
 
 	public void setHousenumberAdditionCaseSensity(boolean casesensity) {
 		housenumberlist.setHousenumberadditionCaseSentity(casesensity);
@@ -223,6 +258,7 @@ public class Evaluation {
 			System.out.println("Furthermore column titles will be ignored");
 			System.out.println("");
 			System.out.println("Help for client-server mode and its program call parameters:");
+			System.out.println("-osmdatasource overpass | db  -- source of osm data, where to get from (default: 'overpass')");
 			System.out.println("-country countryname -- ('Bundesrepublik Deutschland' or other countries in english version, for exampel 'Netherland'");
 			System.out.println("-officialkeysid id -- official id of the muncipality. In Germany amtlicher Gemeindeschlüssel. Wildcard at the end * possible");
 			System.out.println("-adminhierarchy xy -- administrative hierarchy, for example 'Bundesrepublik Deutschland,Bayern'");
@@ -251,6 +287,7 @@ public class Evaluation {
 			System.out.println("Weitere Spaltentitel können vorhanden sein und werden ignoriert");
 			System.out.println("");
 			System.out.println("Für Client/Server Auswertungen PFLICHT-Parameter:");
+			System.out.println("-osmdatasource overpass | db  -- Quelle, wo OSM Daten abgefragt werden sollen (Standard: 'overpass')");
 			System.out.println("-country: 'Bundesrepublik Deutschland' wenn fehlend");
 			System.out.println("-municipality: Stadtname");
 			System.out.println("-officialkeysid 8stelligeramtlicherGemeindeschlüssel z.B. 09761000");
@@ -270,12 +307,13 @@ public class Evaluation {
 
 		DateFormat dateformat = DateFormat.getDateTimeInstance();
 		
-		String parameterCountry = "Bundesrepublik Deutschland";
+		String parameterCountry = "";
 		String parameterAdminHierarchy = "";
 		String parameterMunicipiality = "";
 		String parameterJobname = "";
 		String parameterOfficialkeysId = "";
 		String parameterLanguagecode = "";
+		String parameterOsmDatasource = "overpass";
 		boolean parameterAllMissingJobs = false;
 		boolean parameterGetQueueJobs = false;
 		String parameterQueueFilter = "";
@@ -294,47 +332,50 @@ public class Evaluation {
 				if (args.length > argsi + 1) {
 					System.out.println("  args # + 1: " + (argsi + 1) + "   ===" + args[argsi + 1] + "===");
 				}
-				if (args[argsi].equals("-country")) {
+				
+				System.out.println("-osmdatasource overpass | db  -- source of osm data, where to get from (default: 'overpass')");
+				
+				if (args[argsi].equals("-osmdatasource")) {
+					if(!args[argsi + 1].equals("")) {
+						if(		(args[argsi + 1].toLowerCase().equals("overpass"))
+							||	(args[argsi + 1].toLowerCase().equals("db"))) {
+							parameterOsmDatasource = args[argsi + 1];
+							argsOkCount  += 2;
+						} else {
+							System.out.println("Program input parameter -osmdatasource has invalid value ===" + args[argsi + 1] + "===, but only 'overpass' and 'db' are allowed");
+						}
+					}
+				} else if (args[argsi].equals("-country")) {
 					parameterCountry = args[argsi + 1];
 					argsOkCount  += 2;
-				}
-				if (args[argsi].equals("-adminhierarchy")) {
+				} else if (args[argsi].equals("-adminhierarchy")) {
 					parameterAdminHierarchy = args[argsi + 1];
 					argsOkCount  += 2;
-				}
-				if (args[argsi].equals("-municipality")) {
+				} else if (args[argsi].equals("-municipality")) {
 					parameterMunicipiality = args[argsi + 1];
 					argsOkCount  += 2;
-				}
-				if (args[argsi].equals("-jobname")) {
+				} else  if (args[argsi].equals("-jobname")) {
 					parameterJobname = args[argsi + 1];
 					argsOkCount  += 2;
-				}
-				if (args[argsi].equals("-officialkeysid")) {
+				} else if (args[argsi].equals("-officialkeysid")) {
 					parameterOfficialkeysId = args[argsi + 1];
 					argsOkCount  += 2;
-				}
-				if (args[argsi].equals("-maxjobs")) {
+				} else if (args[argsi].equals("-maxjobs")) {
 					parameterMaxJobs = Integer.parseInt(args[argsi + 1]);
 					argsOkCount  += 2;
-				}
-				if (args[argsi].equals("-maxminutes")) {
+				} else if (args[argsi].equals("-maxminutes")) {
 					parameterMaxMinutes = Integer.parseInt(args[argsi + 1]);
 					argsOkCount  += 2;
-				}
-				if(args[argsi].equals("-languagecode")) {
+				} else if(args[argsi].equals("-languagecode")) {
 					parameterLanguagecode = args[argsi+1];
 					argsOkCount += 2;
-				}
-				if (args[argsi].equals("-allmissingjobs")) {
+				} else if (args[argsi].equals("-allmissingjobs")) {
 					parameterAllMissingJobs = true;
 					argsOkCount  += 1;
-				}
-				if (args[argsi].equals("-file")) {
+				} else if (args[argsi].equals("-file")) {
 					parameterImportdateiname = args[argsi + 1];
 					argsOkCount += 2;
-				}
-				if (args[argsi].equals("-housenumbercasesensity")) {
+				} else if (args[argsi].equals("-housenumbercasesensity")) {
 					String yesno = args[argsi + 1].toLowerCase().substring(0,1);
 					if (yesno.equals("y") || yesno.equals("j")) {
 						parameterHousenumbersCaseSensity = true;
@@ -342,8 +383,7 @@ public class Evaluation {
 						parameterHousenumbersCaseSensity = false;
 					}
 					argsOkCount += 2;
-				}
-				if (args[argsi].equals("-queuejobs")) {
+				} else if (args[argsi].equals("-queuejobs")) {
 					String yesno = args[argsi + 1].toLowerCase().substring(0,1);
 					if (yesno.equals("y") || yesno.equals("j")) {
 						parameterGetQueueJobs = true;
@@ -351,8 +391,7 @@ public class Evaluation {
 						parameterGetQueueJobs = false;
 					}
 					argsOkCount += 2;
-				}
-				if (args[argsi].equals("-queuefilter")) {
+				} else if (args[argsi].equals("-queuefilter")) {
 					String parametervalue = args[argsi + 1].toLowerCase().substring(0,1);
 					if (parametervalue.equals("i") || parametervalue.equals("i")) {
 						parameterQueueFilter = "instant";
@@ -360,12 +399,10 @@ public class Evaluation {
 						parameterQueueFilter = "regular";
 					}
 					argsOkCount += 2;
-				}
-				if (args[argsi].equals("-relationid")) {
+				} else if (args[argsi].equals("-relationid")) {
 					parameterOSMRelationid = Long.parseLong(args[argsi + 1]);
 					argsOkCount += 2;
-				}
-				if (args[argsi].equals("-columnseparator")) {
+				} else if (args[argsi].equals("-columnseparator")) {
 					parameterFieldSeparator = args[argsi + 1];
 					argsOkCount += 2;
 				}
@@ -477,6 +514,7 @@ public class Evaluation {
 			OsmDataReader osmreader = new OsmDataReader();
 			Evaluation evaluation = new Evaluation();
 	
+			evaluation.setOsmdatasource(parameterOsmDatasource);
 			evaluation.setMunicipality(parameterCountry, parameterMunicipiality);
 			evaluation.setHousenumberAdditionCaseSensity(parameterHousenumbersCaseSensity);
 			evaluation.setUselanguagecode(parameterLanguagecode);
@@ -501,7 +539,7 @@ public class Evaluation {
 				}
 				list_housenumbers = hnrreader.ReadListFromFile(evaluation, parameterImportdateiname, parameterFieldSeparator, parameterHousenumbersCaseSensity);
 				osm_housenumbers.setFieldsForUniqueAddress(list_housenumbers.getFieldsForUniqueAddress());
-				HousenumberCollection tempreceived_osm_housenumbers = osmreader.ReadDataFromOverpass(evaluation, osm_housenumbers, parameterOSMRelationid);
+				HousenumberCollection tempreceived_osm_housenumbers = osmreader.ReadData(evaluation, osm_housenumbers, parameterOSMRelationid);
 				if(tempreceived_osm_housenumbers != null) {
 					osm_housenumbers = tempreceived_osm_housenumbers;
 					evaluated_housenumbers = list_housenumbers.merge(osm_housenumbers, list_housenumbers.getAlternateFieldsForUniqueAddress());
@@ -593,7 +631,8 @@ if(parameterMunicipiality.equals("Köln")) {
 					osm_housenumbers.setFieldsForUniqueAddress(list_housenumbers.getFieldsForUniqueAddress());
 					osm_housenumbers.setAlternateFieldsForUniqueAddress(list_housenumbers.getAlternateFieldsForUniqueAddress());
 	
-					HousenumberCollection tempreceived_osm_housenumbers = osmreader.ReadDataFromOverpass(evaluation, osm_housenumbers, actjob.osmrelationid);
+					osmreader.openDBConnection(configuration.db_osm2pgsql_url, configuration.db_osm2pgsql_username, configuration.db_osm2pgsql_password);
+					HousenumberCollection tempreceived_osm_housenumbers = osmreader.ReadData(evaluation, osm_housenumbers, actjob.osmrelationid);
 					if(tempreceived_osm_housenumbers == null) {
 						logger.log(Level.WARNING, "Warning: job will be ignored, because request to overpass for osm housenumbers failed for job " + actjob.toString() + "; started at " + jobstart.toString());
 						continue;
