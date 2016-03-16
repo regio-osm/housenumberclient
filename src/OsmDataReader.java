@@ -18,9 +18,9 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -28,7 +28,6 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.TreeMap;
 import java.util.Collection;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -45,7 +44,17 @@ import java.util.zip.GZIPInputStream;
 
 
 
+
+
+
+
+
+
+
+
+
 import de.regioosm.housenumbers.Applicationconfiguration;
+import de.zalando.typemapper.postgres.HStore;
 
 import org.openstreetmap.osmosis.core.OsmosisRuntimeException;
 import org.openstreetmap.osmosis.core.container.v0_6.EntityContainer;
@@ -56,8 +65,6 @@ import org.openstreetmap.osmosis.core.domain.v0_6.*;
 import org.openstreetmap.osmosis.core.filter.common.IdTracker;
 import org.openstreetmap.osmosis.core.filter.common.IdTrackerFactory;
 import org.openstreetmap.osmosis.core.filter.common.IdTrackerType;
-import org.openstreetmap.osmosis.core.store.SimpleObjectStore;
-import org.openstreetmap.osmosis.core.store.SingleClassObjectSerializationFactory;
 import org.openstreetmap.osmosis.core.task.v0_6.Sink;
 import org.openstreetmap.osmosis.core.task.v0_6.RunnableSource;
 import org.openstreetmap.osmosis.xml.common.CompressionMethod;
@@ -81,6 +88,7 @@ import java.text.ParseException;
 public class OsmDataReader {
 	private static final int HAUSNUMMERSORTIERBARLENGTH = 4;
 	private static final Logger logger = Evaluation.logger;
+	static Connection con_mapnik = null;
 
 	Applicationconfiguration configuration = new Applicationconfiguration("");
 
@@ -95,27 +103,65 @@ public class OsmDataReader {
 	IdTracker availableNodes = IdTrackerFactory.createInstance(IdTrackerType.Dynamic);
 	IdTracker availableWays = IdTrackerFactory.createInstance(IdTrackerType.Dynamic);
 	IdTracker availableRelations = IdTrackerFactory.createInstance(IdTrackerType.Dynamic);
-	SimpleObjectStore<EntityContainer> allNodes = new SimpleObjectStore<EntityContainer>(new SingleClassObjectSerializationFactory(EntityContainer.class), "afnd", true);
-	SimpleObjectStore<EntityContainer> allWays = new SimpleObjectStore<EntityContainer>(new SingleClassObjectSerializationFactory(EntityContainer.class), "afwy", true);
-	SimpleObjectStore<EntityContainer> allRelations = new SimpleObjectStore<EntityContainer>(new SingleClassObjectSerializationFactory(EntityContainer.class), "afrl", true);
-
 	
 	TreeMap<Long, Node> gibmirnodes = new TreeMap<Long, Node>();
 	TreeMap<Long, Way> gibmirways = new TreeMap<Long, Way>();
 	TreeMap<Long, Relation> gibmirrelations = new TreeMap<Long, Relation>();
 
+	Long pointsQueryDuration = 0L;
+	Long pointsAnalyzeDuration = 0L;
+	Long linesQueryDuration = 0L;
+	Long linesAnalyzeDuration = 0L;
+	Long polygonsQueryDuration = 0L;
+	Long polygonsAnalyzeDuration = 0L;
+	
 	String land = "";
 	Integer land_id = -1;
 	Integer stadt_id = -1;
 
+	public void printTimeDurations() {
+		logger.log(Level.INFO, "Time for lines DB query in msec: " + linesQueryDuration);
+		logger.log(Level.INFO, "Time for lines Analyzing in msec: " + linesAnalyzeDuration);
+		logger.log(Level.INFO, "Time for polygons DB query in msec: " + polygonsQueryDuration);
+		logger.log(Level.INFO, "Time for polygons Analyzing in msec: " + polygonsAnalyzeDuration);
+		logger.log(Level.INFO, "Time for points DB query in msec: " + pointsQueryDuration);
+		logger.log(Level.INFO, "Time for points Analyzing in msec: " + pointsAnalyzeDuration);
+	}
 	
-	public void setDBConnection(String dbconnection, String dbusername, String dbpassword) {
+	public void openDBConnection(String dbconnection, String dbusername, String dbpassword) {
 		this.dbconnection = dbconnection;
 		this.dbusername = dbusername;
 		this.dbpassword = dbpassword;
+
+	
+		try {
+			if(con_mapnik == null) {
+				String url_mapnik = dbconnection;
+				con_mapnik = DriverManager.getConnection(url_mapnik, dbusername, dbpassword);
+			}
+			logger.log(Level.INFO, "Connection to database " + dbconnection + " established.");
+		}
+		catch (SQLException e) {
+			logger.log(Level.SEVERE, "ERROR: failed to connect to database " + dbconnection);
+			logger.log(Level.SEVERE, e.toString());
+			System.out.println("ERROR: failed to connect to database " + dbconnection);
+			System.out.println(e.toString());
+			return;
+		}
 	}
 
-
+	public void closeDBConnection() {
+		try {
+			con_mapnik.close();
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		this.dbconnection = "";
+		this.dbusername = "";
+		this.dbpassword = "";
+	}
+	
 	private static String[] Hausnummernbereich_aufloesen(String hausnummertext) {
 		List<String>	hausnummern_array = new ArrayList<String>();
 
@@ -146,7 +192,23 @@ public class OsmDataReader {
 	}
 
 
-	public HousenumberCollection ReadDataFromOverpass(final Evaluation evaluation, final HousenumberCollection housenumbers, Long relationsid) {
+	public HousenumberCollection ReadData(final Evaluation evaluation, final HousenumberCollection housenumbers, Long relationsid) {
+		String osmdatasource = evaluation.getOsmdatasource();
+		if(osmdatasource.equals("overpass")) {
+			return ReadDataFromOverpass(evaluation, housenumbers, relationsid);
+		} else if(osmdatasource.equals("db")) {
+			if(con_mapnik == null)
+				openDBConnection(this.dbconnection, this.dbusername, this.dbpassword);
+			ReadDataFromDB(evaluation, housenumbers, relationsid);
+			closeDBConnection();
+			return housenumbers;
+		} else {
+			return new HousenumberCollection();
+		}
+	}
+
+
+	private HousenumberCollection ReadDataFromOverpass(final Evaluation evaluation, final HousenumberCollection housenumbers, Long relationsid) {
 		URL                url; 
 		URLConnection      urlConn; 
 		BufferedReader     dis;
@@ -174,6 +236,7 @@ public class OsmDataReader {
 			+ "rel(area.boundaryarea)[\"type\"=\"associatedStreet\"];>>;\n"
 			+ ");\n"
 			+ "out meta;";
+		logger.log(Level.FINE, "OSM Overpass Query ===" + overpass_query + "===");
 
 		String url_string = "";
 		File osmFile = null;
@@ -553,7 +616,6 @@ public class OsmDataReader {
 			            //do something with the node
 			        	nodes_count++;
 
-		    			//allNodes.add(entityContainer);
 		    			availableNodes.set(entity.getId());
 
 						NodeContainer nodec = (NodeContainer) entityContainer;
@@ -564,7 +626,6 @@ public class OsmDataReader {
 			        } else if (entity instanceof Way) {
 			        	ways_count++;
 			        	
-		    			//allWays.add(entityContainer);
 		    			availableWays.set(entity.getId());
 
 						WayContainer wayc = (WayContainer) entityContainer;
@@ -755,86 +816,455 @@ public class OsmDataReader {
 	}
 
 
-	public HousenumberCollection ReadListFromDB(Evaluation evaluation) {
-		final HousenumberCollection housenumbers = new HousenumberCollection();
+	private HousenumberCollection ReadDataFromDB(final Evaluation evaluation, final HousenumberCollection housenumbers, Long relationsid) {
 
-		if(		(dbconnection.equals("")) 
-			||	(dbusername.equals(""))
-			||	(dbpassword.equals(""))
-			||	(evaluation.getCountry().equals(""))
-			||	(evaluation.getMunicipality().equals(""))
-			||	(evaluation.getJobname().equals(""))
-			)
-		{
-			return housenumbers;
-		}
-if(1 == 1) {
-	logger.log(Level.SEVERE, "method ReadListFromDB has not been coded yet, CANCEL");
-	return housenumbers;
-}
 	
-		String sqlqueryofficialhousenumbers = "";
-
-		try {
-			Class.forName("org.postgresql.Driver");
-		} catch (ClassNotFoundException e) {
-			e.printStackTrace();
+		if(con_mapnik == null) {
 			return housenumbers;
 		}
 
+		Connection con_housenumbers = null;
+		String url_housenumbers = configuration.db_application_url;
 		try {
-			Connection conhousenumberdb = DriverManager.getConnection(dbconnection, dbusername, dbpassword);
-		
-			sqlqueryofficialhousenumbers = "SELECT strasse,";
-			sqlqueryofficialhousenumbers  += " sh.hausnummer AS hausnummer,";
-			sqlqueryofficialhousenumbers  += " sh.hausnummer_sortierbar AS hausnummer_sortierbar,";
-			sqlqueryofficialhousenumbers  += " str.id AS strasse_id, strasse";
-			sqlqueryofficialhousenumbers  += " FROM stadt_hausnummern AS sh,";
-			sqlqueryofficialhousenumbers  += " strasse AS str,";
-			sqlqueryofficialhousenumbers  += " stadt AS s,";
-			sqlqueryofficialhousenumbers  += " land as l";
-			sqlqueryofficialhousenumbers  += " WHERE";
-	//TODO enable subarea selection within municipality, if official housenumberlist contains subadmin name
-	/*		if ((rs_jobs.getString("subids_separat").equals("y")) && (job_id != -1)) {
-				logger.log(Level.FINEST, "aktueller Job ist innerhalb einer größeren Municipality mit sub_id besetzt, ");
-				logger.log(Level.FINEST, "(cont) also von Stadt-Hausnummernliste nur ggfs. Teile holen ...");
-				sqlqueryofficialhousenumbers  += " (sub_id = '"  + job_id  + "' OR sub_id = '-1') AND";
+			if(con_housenumbers == null) {
+				con_housenumbers = DriverManager.getConnection(url_housenumbers, configuration.db_application_username, configuration.db_application_password);
 			}
-	*/
-			sqlqueryofficialhousenumbers  += " land = '" + evaluation.getCountry() + "'";
-			sqlqueryofficialhousenumbers  += " AND stadt = '" + evaluation.getMunicipality() + "'";
-			sqlqueryofficialhousenumbers  += " AND sh.land_id = l.id";
-			sqlqueryofficialhousenumbers  += " AND sh.stadt_id = s.id";
-			sqlqueryofficialhousenumbers  += " AND sh.strasse_id = str.id";
-			sqlqueryofficialhousenumbers += " ORDER BY correctorder(strasse), hausnummer_sortierbar;";
-			Statement stmtqueryofficialhousenumbers = conhousenumberdb.createStatement();
-			ResultSet rsqueryofficialhousenumbers = stmtqueryofficialhousenumbers.executeQuery(sqlqueryofficialhousenumbers);
-	
-			String tempAkthausnummer = "";
-			while (rsqueryofficialhousenumbers.next()) {
-				tempAkthausnummer = rsqueryofficialhousenumbers.getString("hausnummer_sortierbar");
-				tempAkthausnummer = tempAkthausnummer.substring(1, HAUSNUMMERSORTIERBARLENGTH);
-
-				Housenumber newofficialhousenumber = new Housenumber(housenumbers);
-
-				newofficialhousenumber.setStrasse(rsqueryofficialhousenumbers.getString("strasse"));
-				newofficialhousenumber.setHausnummer(rsqueryofficialhousenumbers.getString("hausnummer"));
-				newofficialhousenumber.setTreffertyp(Housenumber.Treffertyp.LIST_ONLY);
-	
-				housenumbers.add_newentry(newofficialhousenumber);
-			} // Ende sql-Schleife über alle Stadt-only-Hausnummern der aktuellen Strasse - while(rsqueryofficialhousenumbers.next()) {
-	
-//			for(int loadindex=0; loadindex < evaluation.housenumberlist.length(); loadindex++) {
-//				Workcache_Entry aktcacheentry = evaluation.housenumberlist.entry(loadindex);
-//			}
-	
-		
-		} catch (SQLException e) {
-			System.out.println("ERROR: during select table auswertung_hausnummern, sqlquery was ===" 
-				+ sqlqueryofficialhousenumbers + "===");
-			e.printStackTrace();
+			logger.log(Level.INFO, "Connection to database " + url_housenumbers + " established.");
 		}
+		catch (SQLException e) {
+			logger.log(Level.SEVERE, "ERROR: failed to connect to database " + url_housenumbers);
+			logger.log(Level.SEVERE, e.toString());
+			System.out.println("ERROR: failed to connect to database " + url_housenumbers);
+			System.out.println(e.toString());
+			return housenumbers;
+		}
+
+		Integer onlyPartOfStreetnameIndexNo = evaluation.getOnlyPartOfStreetnameIndexNo();
+		String onlyPartOfStreetnameSeparator = evaluation.getOnlyPartOfStreetnameSeparator();
 		
+
+		logger.log(Level.FINE, "   ----------------------------------------------------------------------------------------");
+		logger.log(Level.FINE, "   ----------------------------------------------------------------------------------------");
+		logger.log(Level.FINE, "      Read OSM Data - Job  =" + evaluation.getJobname()
+			+ "=, admin_level: " + evaluation.getJobAdminlevel() + "   Municipality " + evaluation.getJobMunicipality() 
+			+ "  Country " + evaluation.getJobCountry());
+
+		try {
+			String jobPolygonQuerySql = "SELECT polygon FROM jobs AS j, gebiete AS g, stadt AS s, land AS l"
+				+ " WHERE j.gebiete_id = g.id AND j.stadt_id = s.id AND j.land_id = l.id"
+				+ " AND jobname = ? AND admin_level = ? AND stadt = ? AND land = ?;";
+			PreparedStatement jobPolygonQueryStmt = con_housenumbers.prepareStatement(jobPolygonQuerySql);
+			Integer statementIndex = 1;
+			String preparedParameters = ""; 
+			jobPolygonQueryStmt.setString(statementIndex++, evaluation.getJobname());
+			preparedParameters += " [" + (statementIndex - 1) + "] ===" + evaluation.getJobname() + "===";
+			jobPolygonQueryStmt.setInt(statementIndex++, evaluation.getJobAdminlevel());
+			preparedParameters += " [" + (statementIndex - 1) + "] ===" + evaluation.getJobAdminlevel() + "===";
+			jobPolygonQueryStmt.setString(statementIndex++, evaluation.getJobMunicipality());
+			preparedParameters += " [" + (statementIndex - 1) + "] ===" + evaluation.getJobMunicipality() + "===";
+			jobPolygonQueryStmt.setString(statementIndex++, evaluation.getJobCountry());
+			preparedParameters += " [" + (statementIndex - 1) + "] ===" + evaluation.getJobCountry() + "===";
+			logger.log(Level.FINE, "Prepared statement parameters " + preparedParameters);
+	
+			String polygonBinaryString = "";
+			ResultSet jobPolygonQueryRS = jobPolygonQueryStmt.executeQuery();
+			if(jobPolygonQueryRS.next()) {
+				polygonBinaryString = jobPolygonQueryRS.getString("polygon");
+			}
+			jobPolygonQueryRS.close();
+			jobPolygonQueryStmt.close();
+	
+			if(polygonBinaryString.equals("")) {
+				return housenumbers;
+			}
+
+
+				// ------------------------------------------------------------------------------
+				// 1. get all addr:housenumber node objects from the PLANET_POINT table
+	
+			String pointsObjectsSql = "SELECT osm_id AS id, tags->'addr:street' AS addrstreet, tags->'addr:place' AS addrplace,";
+			if(!evaluation.getUselanguagecode().equals(""))
+				pointsObjectsSql += "tags -> ? AS streetlocalized, tags -> ? AS placelocalized,";
+			else
+				pointsObjectsSql += "tags -> null AS streetlocalized, tags -> null AS placelocalized,";
+			pointsObjectsSql += " tags->'addr:postcode', tags->'addr:housenumber',"
+				+ " tags, ST_X(ST_Transform(way, 4326)) AS lon, ST_Y(ST_Transform(way, 4326)) AS lat"
+				+ " FROM planet_point WHERE"
+				+ " ST_Covers(?::geometry, way) AND"	// ST_Covers = complete inside
+				+ " exist(tags, 'addr:housenumber');";
+	
+			PreparedStatement pointsObjectsStmt = con_mapnik.prepareStatement(pointsObjectsSql);
+			statementIndex = 1;
+			preparedParameters = ""; 
+			pointsObjectsSql += "tags -> ? AS streetlocalized, tags -> ? AS placelocalized,";
+			if(!evaluation.getUselanguagecode().equals("")) {
+				pointsObjectsStmt.setString(statementIndex++, "addr:street:" + evaluation.getUselanguagecode());
+				preparedParameters += " [" + (statementIndex - 1) + "] ===" + "addr:street:" + evaluation.getUselanguagecode() + "===";
+				pointsObjectsStmt.setString(statementIndex++, "addr:place:" + evaluation.getUselanguagecode());
+				preparedParameters += " [" + (statementIndex - 1) + "] ===" + "addr:street:" + evaluation.getUselanguagecode() + "===";
+			}
+			pointsObjectsStmt.setString(statementIndex++, polygonBinaryString);
+			preparedParameters += " [" + (statementIndex - 1) + "] ===((completepolygon))===";
+			logger.log(Level.FINE, "Prepared statement parameters " + preparedParameters);
+
+			java.util.Date local_query_start = new java.util.Date();
+	
+			ResultSet pointsObjectsRS = pointsObjectsStmt.executeQuery();
+	
+			java.util.Date local_query_end = new java.util.Date();
+			logger.log(Level.FINEST, "TIME single-step quer osm-ways in ms. "+(local_query_end.getTime()-local_query_start.getTime()));
+			pointsQueryDuration += local_query_end.getTime() - local_query_start.getTime();
+			local_query_start = local_query_end;
+
+			while( pointsObjectsRS.next() ) {
+				HStore hstore = new HStore(pointsObjectsRS.getString("tags"));
+				try {
+					HashMap<String,String> tags = (HashMap<String,String>) hstore.asMap();
+					
+					Long objectid = pointsObjectsRS.getLong("id");
+	        		String address_street = "";
+	        		String address_streetlocalized = "";
+	        		String address_postcode = "";
+	        		String address_housenumber = "";
+
+	        		if(pointsObjectsRS.getString("addrstreet") != null && !pointsObjectsRS.getString("addrstreet").equals("")) {
+	        			if(onlyPartOfStreetnameIndexNo != -1) {
+	        				String streetnameParts[] = pointsObjectsRS.getString("addrstreet").split(onlyPartOfStreetnameSeparator);
+	        				if(streetnameParts.length >= (onlyPartOfStreetnameIndexNo+1))
+	        					address_street = streetnameParts[onlyPartOfStreetnameIndexNo];
+	        			} else {
+	        				address_street = pointsObjectsRS.getString("addrstreet");
+	        			}
+	        		}
+	        		if(		(!evaluation.getUselanguagecode().equals(""))
+	        			&&	(pointsObjectsRS.getString("streetlocalized") != null && !pointsObjectsRS.getString("streetlocalized").equals(""))) {
+	       				address_street = pointsObjectsRS.getString("streetlocalized");
+	        		}
+
+	        		if(pointsObjectsRS.getString("addrplace") != null && !pointsObjectsRS.getString("addrplace").equals("")) {
+	        			if(onlyPartOfStreetnameIndexNo != -1) {
+	        				String streetnameParts[] = pointsObjectsRS.getString("addrplace").split(onlyPartOfStreetnameSeparator);
+	        				if(streetnameParts.length >= (onlyPartOfStreetnameIndexNo+1))
+	        					address_street = streetnameParts[onlyPartOfStreetnameIndexNo];
+	        			} else {
+	        				address_street = pointsObjectsRS.getString("addrplace");
+	        			}
+	        		}
+	        		if(		(!evaluation.getUselanguagecode().equals(""))
+	        			&&	(pointsObjectsRS.getString("placelocalized") != null && !pointsObjectsRS.getString("placelocalized").equals(""))) {
+	       				address_street = pointsObjectsRS.getString("placelocalized");
+	        		}
+	    		
+	        		if(tags.get("addr:postcode") != null) {
+	        			address_postcode = tags.get("addr:postcode").replace(" ", "");
+	        		}
+	        		if(tags.get("addr:housenumber") != null) {
+	        			address_housenumber = tags.get("addr:housenumber");
+	        		}
+					logger.log(Level.FINEST,  "raw node with housenumber ===" + address_housenumber 
+							+ "=== in street ===" + address_street + "===, node id #" + objectid + "===");
+
+					if(!address_street.equals("")) {
+						Housenumber osmhousenumber = new Housenumber(housenumbers);
+						osmhousenumber.setOSMObjekt("node", objectid);
+						if(!address_streetlocalized.equals(""))
+							osmhousenumber.setStrasse(address_streetlocalized);
+						else
+							osmhousenumber.setStrasse(address_street);
+						osmhousenumber.setPostcode(address_postcode);
+						osmhousenumber.set_osm_tag(tags);
+						String objectlonlat = pointsObjectsRS.getDouble("lon") + " " + pointsObjectsRS.getDouble("lat");
+						osmhousenumber.setLonlat(objectlonlat);
+						osmhousenumber.setLonlat_source("OSM");
+						osmhousenumber.setTreffertyp(Housenumber.Treffertyp.OSM_ONLY);
+						
+						if(address_housenumber.indexOf(",") != -1)
+							address_housenumber = address_housenumber.replace(",",";");
+						String[] addressHousenumberParts = address_housenumber.split(";");
+						for(int tempi = 0; tempi < addressHousenumberParts.length; tempi++) {
+							String actSingleHousenumber = addressHousenumberParts[tempi].trim();
+							String[] temp_akthausnummer_single_array = Hausnummernbereich_aufloesen(actSingleHousenumber);
+							for(String tempsinglei: temp_akthausnummer_single_array) {
+								osmhousenumber.setHausnummer(tempsinglei);
+								housenumbers.add_newentry(osmhousenumber);
+								logger.log(Level.FINEST,  "add node with housenumber ===" + osmhousenumber.getHausnummer() 
+									+ "=== in street ===" + osmhousenumber.getStrasse() + "===, node id #" + osmhousenumber.getOsmId() + "===");
+							}
+						}
+					} else {
+						logger.log(Level.WARNING, "OSM Node has a housenumber, but no street or place Information and will be ignored. OSM-Node id is " + objectid);
+					}
+				} catch (IllegalStateException hstoreerror) {
+					System.out.println("error, when hstore tried to interpret. hstore in DB ===" + hstore + ", table auswertung_hausnummern, db id: " + pointsObjectsRS.getString("id"));
+				}
+			}
+			pointsObjectsRS.close();
+			pointsObjectsStmt.close();
+			local_query_end = new java.util.Date();
+			logger.log(Level.FINEST, "TIME single-step analyzing osm-ways in ms. "+(local_query_end.getTime()-local_query_start.getTime()));
+			pointsAnalyzeDuration += local_query_end.getTime() - local_query_start.getTime();
+
+
+				// ------------------------------------------------------------------------------
+				// 2. get all addr:housenumber node objects from the PLANET_LINE table
+	
+			String linesObjectsSql = "SELECT osm_id AS id, tags->'addr:street' AS addrstreet, tags->'addr:place' AS addrplace,";
+			if(!evaluation.getUselanguagecode().equals(""))
+				linesObjectsSql += "tags -> ? AS streetlocalized, tags -> ? AS placelocalized,";
+			else
+				linesObjectsSql += "tags -> null AS streetlocalized, tags -> null AS placelocalized,";
+			linesObjectsSql += " tags->'addr:postcode', tags->'addr:housenumber',"
+				+ " tags, ST_X(ST_Transform(ST_Centroid(way), 4326)) AS lon, ST_Y(ST_Transform(ST_Centroid(way), 4326)) AS lat"
+				+ " FROM planet_line WHERE"
+				+ " ST_Covers(?::geometry, way) AND"	// ST_Covers = complete inside
+				+ " ST_Crosses(?::geometry, way) AND"	// ST_Crosses = partly inside
+				+ " exist(tags, 'addr:housenumber');";
+	
+			PreparedStatement linesObjectsStmt = con_mapnik.prepareStatement(linesObjectsSql);
+			statementIndex = 1;
+			preparedParameters = ""; 
+			linesObjectsSql += "tags -> ? AS streetlocalized, tags -> ? AS placelocalized,";
+			if(!evaluation.getUselanguagecode().equals("")) {
+				linesObjectsStmt.setString(statementIndex++, "addr:street:" + evaluation.getUselanguagecode());
+				preparedParameters += " [" + (statementIndex - 1) + "] ===" + "addr:street:" + evaluation.getUselanguagecode() + "===";
+				linesObjectsStmt.setString(statementIndex++, "addr:place:" + evaluation.getUselanguagecode());
+				preparedParameters += " [" + (statementIndex - 1) + "] ===" + "addr:street:" + evaluation.getUselanguagecode() + "===";
+			}
+			linesObjectsStmt.setString(statementIndex++, polygonBinaryString);
+			preparedParameters += " [" + (statementIndex - 1) + "] ===((completepolygon))===";
+			logger.log(Level.FINE, "Prepared statement parameters " + preparedParameters);
+	
+			local_query_start = new java.util.Date();
+	
+			ResultSet linesObjectsRS = linesObjectsStmt.executeQuery();
+	
+			local_query_end = new java.util.Date();
+			logger.log(Level.FINEST, "TIME single-step quer osm-ways in ms. "+(local_query_end.getTime()-local_query_start.getTime()));
+			linesQueryDuration += local_query_end.getTime() - local_query_start.getTime();
+			local_query_start = local_query_end;
+	
+			while( linesObjectsRS.next() ) {
+				HStore hstore = new HStore(linesObjectsRS.getString("tags"));
+				try {
+					HashMap<String,String> tags = (HashMap<String,String>) hstore.asMap();
+					
+					Long objectid = linesObjectsRS.getLong("id");
+	        		String address_street = "";
+	        		String address_streetlocalized = "";
+	        		String address_postcode = "";
+	        		String address_housenumber = "";
+	
+	        		if(linesObjectsRS.getString("addrstreet") != null && !linesObjectsRS.getString("addrstreet").equals("")) {
+	        			if(onlyPartOfStreetnameIndexNo != -1) {
+	        				String streetnameParts[] = linesObjectsRS.getString("addrstreet").split(onlyPartOfStreetnameSeparator);
+	        				if(streetnameParts.length >= (onlyPartOfStreetnameIndexNo+1))
+	        					address_street = streetnameParts[onlyPartOfStreetnameIndexNo];
+	        			} else {
+	        				address_street = linesObjectsRS.getString("addrstreet");
+	        			}
+	        		}
+	        		if(		(!evaluation.getUselanguagecode().equals(""))
+	        			&&	(linesObjectsRS.getString("streetlocalized") != null && !linesObjectsRS.getString("streetlocalized").equals(""))) {
+	       				address_street = linesObjectsRS.getString("streetlocalized");
+	        		}
+	
+	        		if(linesObjectsRS.getString("addrplace") != null && !linesObjectsRS.getString("addrplace").equals("")) {
+	        			if(onlyPartOfStreetnameIndexNo != -1) {
+	        				String streetnameParts[] = linesObjectsRS.getString("addrplace").split(onlyPartOfStreetnameSeparator);
+	        				if(streetnameParts.length >= (onlyPartOfStreetnameIndexNo+1))
+	        					address_street = streetnameParts[onlyPartOfStreetnameIndexNo];
+	        			} else {
+	        				address_street = linesObjectsRS.getString("addrplace");
+	        			}
+	        		}
+	        		if(		(!evaluation.getUselanguagecode().equals(""))
+	        			&&	(linesObjectsRS.getString("placelocalized") != null && !linesObjectsRS.getString("placelocalized").equals(""))) {
+	       				address_street = linesObjectsRS.getString("placelocalized");
+	        		}
+	    		
+	        		if(tags.get("addr:postcode") != null) {
+	        			address_postcode = tags.get("addr:postcode").replace(" ", "");
+	        		}
+	        		if(tags.get("addr:housenumber") != null) {
+	        			address_housenumber = tags.get("addr:housenumber");
+	        		}
+					logger.log(Level.FINEST,  "raw node with housenumber ===" + address_housenumber 
+							+ "=== in street ===" + address_street + "===, node id #" + objectid + "===");
+	
+					if(!address_street.equals("")) {
+						Housenumber osmhousenumber = new Housenumber(housenumbers);
+						osmhousenumber.setOSMObjekt("node", objectid);
+						if(!address_streetlocalized.equals(""))
+							osmhousenumber.setStrasse(address_streetlocalized);
+						else
+							osmhousenumber.setStrasse(address_street);
+						osmhousenumber.setPostcode(address_postcode);
+						osmhousenumber.set_osm_tag(tags);
+						String objectlonlat = linesObjectsRS.getDouble("lon") + " " + linesObjectsRS.getDouble("lat");
+						osmhousenumber.setLonlat(objectlonlat);
+						osmhousenumber.setLonlat_source("OSM");
+						osmhousenumber.setTreffertyp(Housenumber.Treffertyp.OSM_ONLY);
+						
+						if(address_housenumber.indexOf(",") != -1)
+							address_housenumber = address_housenumber.replace(",",";");
+						String[] addressHousenumberParts = address_housenumber.split(";");
+						for(int tempi = 0; tempi < addressHousenumberParts.length; tempi++) {
+							String actSingleHousenumber = addressHousenumberParts[tempi].trim();
+							String[] temp_akthausnummer_single_array = Hausnummernbereich_aufloesen(actSingleHousenumber);
+							for(String tempsinglei: temp_akthausnummer_single_array) {
+								osmhousenumber.setHausnummer(tempsinglei);
+								housenumbers.add_newentry(osmhousenumber);
+								logger.log(Level.FINEST,  "add node with housenumber ===" + osmhousenumber.getHausnummer() 
+									+ "=== in street ===" + osmhousenumber.getStrasse() + "===, node id #" + osmhousenumber.getOsmId() + "===");
+							}
+						}
+					} else {
+						logger.log(Level.WARNING, "OSM Node has a housenumber, but no street or place Information and will be ignored. OSM-Node id is " + objectid);
+					}
+				} catch (IllegalStateException hstoreerror) {
+					System.out.println("error, when hstore tried to interpret. hstore in DB ===" + hstore + ", table auswertung_hausnummern, db id: " + linesObjectsRS.getString("id"));
+				}
+			}
+			linesObjectsRS.close();
+			linesObjectsStmt.close();
+			local_query_end = new java.util.Date();
+			logger.log(Level.FINEST, "TIME single-step analyzing osm-ways in ms. "+(local_query_end.getTime()-local_query_start.getTime()));
+			linesAnalyzeDuration += local_query_end.getTime() - local_query_start.getTime();
+		
+
+				// ------------------------------------------------------------------------------
+				// 3. get all addr:housenumber node objects from the PLANET_POLYGON table
+		
+			String polygonsObjectsSql = "SELECT osm_id AS id, tags->'addr:street' AS addrstreet, tags->'addr:place' AS addrplace,";
+			if(!evaluation.getUselanguagecode().equals(""))
+				polygonsObjectsSql += "tags -> ? AS streetlocalized, tags -> ? AS placelocalized,";
+			else
+				polygonsObjectsSql += "tags -> null AS streetlocalized, tags -> null AS placelocalized,";
+			polygonsObjectsSql += " tags->'addr:postcode', tags->'addr:housenumber',"
+				+ " tags, ST_X(ST_Transform(ST_Centroid(way), 4326)) AS lon, ST_Y(ST_Transform(ST_Centroid(way), 4326)) AS lat"
+				+ " FROM planet_polygon WHERE"
+				+ " ST_Covers(?::geometry, way) AND"	// ST_Covers = complete inside
+				+ " ST_Crosses(?::geometry, way) AND"	// ST_Crosses = partly inside
+				+ " exist(tags, 'addr:housenumber');";
+		
+			PreparedStatement polygonsObjectsStmt = con_mapnik.prepareStatement(polygonsObjectsSql);
+			statementIndex = 1;
+			preparedParameters = ""; 
+			polygonsObjectsSql += "tags -> ? AS streetlocalized, tags -> ? AS placelocalized,";
+			if(!evaluation.getUselanguagecode().equals("")) {
+				polygonsObjectsStmt.setString(statementIndex++, "addr:street:" + evaluation.getUselanguagecode());
+				preparedParameters += " [" + (statementIndex - 1) + "] ===" + "addr:street:" + evaluation.getUselanguagecode() + "===";
+				polygonsObjectsStmt.setString(statementIndex++, "addr:place:" + evaluation.getUselanguagecode());
+				preparedParameters += " [" + (statementIndex - 1) + "] ===" + "addr:street:" + evaluation.getUselanguagecode() + "===";
+			}
+			polygonsObjectsStmt.setString(statementIndex++, polygonBinaryString);
+			preparedParameters += " [" + (statementIndex - 1) + "] ===((completepolygon))===";
+			logger.log(Level.FINE, "Prepared statement parameters " + preparedParameters);
+		
+			local_query_start = new java.util.Date();
+		
+			ResultSet polygonsObjectsRS = polygonsObjectsStmt.executeQuery();
+		
+			local_query_end = new java.util.Date();
+			logger.log(Level.FINEST, "TIME single-step quer osm-ways in ms. "+(local_query_end.getTime()-local_query_start.getTime()));
+			polygonsQueryDuration += local_query_end.getTime() - local_query_start.getTime();
+			local_query_start = local_query_end;
+		
+			while( polygonsObjectsRS.next() ) {
+				HStore hstore = new HStore(polygonsObjectsRS.getString("tags"));
+				try {
+					HashMap<String,String> tags = (HashMap<String,String>) hstore.asMap();
+					
+					Long objectid = polygonsObjectsRS.getLong("id");
+		    		String address_street = "";
+		    		String address_streetlocalized = "";
+		    		String address_postcode = "";
+		    		String address_housenumber = "";
+		
+		    		if(polygonsObjectsRS.getString("addrstreet") != null && !polygonsObjectsRS.getString("addrstreet").equals("")) {
+		    			if(onlyPartOfStreetnameIndexNo != -1) {
+		    				String streetnameParts[] = polygonsObjectsRS.getString("addrstreet").split(onlyPartOfStreetnameSeparator);
+		    				if(streetnameParts.length >= (onlyPartOfStreetnameIndexNo+1))
+		    					address_street = streetnameParts[onlyPartOfStreetnameIndexNo];
+		    			} else {
+		    				address_street = polygonsObjectsRS.getString("addrstreet");
+		    			}
+		    		}
+		    		if(		(!evaluation.getUselanguagecode().equals(""))
+		    			&&	(polygonsObjectsRS.getString("streetlocalized") != null && !polygonsObjectsRS.getString("streetlocalized").equals(""))) {
+		   				address_street = polygonsObjectsRS.getString("streetlocalized");
+		    		}
+		
+		    		if(polygonsObjectsRS.getString("addrplace") != null && !polygonsObjectsRS.getString("addrplace").equals("")) {
+		    			if(onlyPartOfStreetnameIndexNo != -1) {
+		    				String streetnameParts[] = polygonsObjectsRS.getString("addrplace").split(onlyPartOfStreetnameSeparator);
+		    				if(streetnameParts.length >= (onlyPartOfStreetnameIndexNo+1))
+		    					address_street = streetnameParts[onlyPartOfStreetnameIndexNo];
+		    			} else {
+		    				address_street = polygonsObjectsRS.getString("addrplace");
+		    			}
+		    		}
+		    		if(		(!evaluation.getUselanguagecode().equals(""))
+		    			&&	(polygonsObjectsRS.getString("placelocalized") != null && !polygonsObjectsRS.getString("placelocalized").equals(""))) {
+		   				address_street = polygonsObjectsRS.getString("placelocalized");
+		    		}
+				
+		    		if(tags.get("addr:postcode") != null) {
+		    			address_postcode = tags.get("addr:postcode").replace(" ", "");
+		    		}
+		    		if(tags.get("addr:housenumber") != null) {
+		    			address_housenumber = tags.get("addr:housenumber");
+		    		}
+					logger.log(Level.FINEST,  "raw node with housenumber ===" + address_housenumber 
+							+ "=== in street ===" + address_street + "===, node id #" + objectid + "===");
+		
+					if(!address_street.equals("")) {
+						Housenumber osmhousenumber = new Housenumber(housenumbers);
+						osmhousenumber.setOSMObjekt("node", objectid);
+						if(!address_streetlocalized.equals(""))
+							osmhousenumber.setStrasse(address_streetlocalized);
+						else
+							osmhousenumber.setStrasse(address_street);
+						osmhousenumber.setPostcode(address_postcode);
+						osmhousenumber.set_osm_tag(tags);
+						String objectlonlat = polygonsObjectsRS.getDouble("lon") + " " + polygonsObjectsRS.getDouble("lat");
+						osmhousenumber.setLonlat(objectlonlat);
+						osmhousenumber.setLonlat_source("OSM");
+						osmhousenumber.setTreffertyp(Housenumber.Treffertyp.OSM_ONLY);
+						
+						if(address_housenumber.indexOf(",") != -1)
+							address_housenumber = address_housenumber.replace(",",";");
+						String[] addressHousenumberParts = address_housenumber.split(";");
+						for(int tempi = 0; tempi < addressHousenumberParts.length; tempi++) {
+							String actSingleHousenumber = addressHousenumberParts[tempi].trim();
+							String[] temp_akthausnummer_single_array = Hausnummernbereich_aufloesen(actSingleHousenumber);
+							for(String tempsinglei: temp_akthausnummer_single_array) {
+								osmhousenumber.setHausnummer(tempsinglei);
+								housenumbers.add_newentry(osmhousenumber);
+								logger.log(Level.FINEST,  "add node with housenumber ===" + osmhousenumber.getHausnummer() 
+									+ "=== in street ===" + osmhousenumber.getStrasse() + "===, node id #" + osmhousenumber.getOsmId() + "===");
+							}
+						}
+					} else {
+						logger.log(Level.WARNING, "OSM Node has a housenumber, but no street or place Information and will be ignored. OSM-Node id is " + objectid);
+					}
+				} catch (IllegalStateException hstoreerror) {
+					System.out.println("error, when hstore tried to interpret. hstore in DB ===" + hstore + ", table auswertung_hausnummern, db id: " + polygonsObjectsRS.getString("id"));
+				}
+			}
+			polygonsObjectsRS.close();
+			polygonsObjectsStmt.close();
+			local_query_end = new java.util.Date();
+			logger.log(Level.FINEST, "TIME single-step analyzing osm-ways in ms. "+(local_query_end.getTime()-local_query_start.getTime()));
+			polygonsAnalyzeDuration += local_query_end.getTime() - local_query_start.getTime();
+
+		}
+		catch( SQLException sqle) {
+			logger.log(Level.SEVERE, "SQL-Exception occured, Details " + sqle.toString());
+//TODO stored errors, like org.postgresql.util.PSQLException: ERROR: GEOS covers() threw an error!
+			System.out.println(sqle.toString());
+		}
 		return housenumbers;
 	}
+
 }
