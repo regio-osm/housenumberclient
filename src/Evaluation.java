@@ -345,9 +345,7 @@ public class Evaluation {
 				if (args.length > argsi + 1) {
 					System.out.println("  args # + 1: " + (argsi + 1) + "   ===" + args[argsi + 1] + "===");
 				}
-				
-				System.out.println("-osmdatasource overpass | db  -- source of osm data, where to get from (default: 'overpass')");
-				
+								
 				if (args[argsi].equals("-osmdatasource")) {
 					if(!args[argsi + 1].equals("")) {
 						if(		(args[argsi + 1].toLowerCase().equals("overpass"))
@@ -426,7 +424,7 @@ public class Evaluation {
 			}
 		}
 		
-		if(		parameterCountry.equals("") 
+		if((1==0) &&		parameterCountry.equals("") 
 			|| (parameterCountry.indexOf("*") != -1)
 			|| (parameterCountry.indexOf("*") != -1))
 		{
@@ -604,9 +602,10 @@ public class Evaluation {
 					evaluation.setJobData(actjob);
 					
 					if(parameterOsmDatasource.equals("")) {
-						if(evaluation.getCountry().equals("Ísland"))
+						if(evaluation.getCountry().equals("Ísland")) {
 							evaluation.setOsmdatasource("db");
-						else
+							logger.log(Level.INFO, "for active Job, the local osm db will be used to get osm data");
+						} else
 							evaluation.setOsmdatasource("overpass");
 					} else {
 						evaluation.setOsmdatasource(parameterOsmDatasource);

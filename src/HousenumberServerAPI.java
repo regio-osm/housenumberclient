@@ -146,9 +146,11 @@ public class HousenumberServerAPI {
 				String fileline = "";
 				while((fileline = reader.readLine()) != null) {
 					System.out.println(fileline);
+
 					if(fileline.equals(""))
 						continue;
-					if(fileline.substring(1,2).equals("#")) {
+					System.out.println("first char ===" + fileline.substring(0,1) + "===");
+					if(fileline.substring(0,1).equals("#")) {
 						System.out.println("ignore comment line ===" + fileline + "===");
 						continue;
 					}
@@ -248,7 +250,7 @@ public class HousenumberServerAPI {
 					System.out.println(fileline);
 					if(fileline.equals(""))
 						continue;
-					if(fileline.substring(1,2).equals("#")) {
+					if(fileline.substring(0,1).equals("#")) {
 						System.out.println("ignore comment line ===" + fileline + "===");
 						continue;
 					}
@@ -343,7 +345,7 @@ public class HousenumberServerAPI {
 				System.out.println(fileline);
 				if(fileline.equals(""))
 					continue;
-				if(fileline.substring(1,2).equals("#")) {
+				if(fileline.substring(0,1).equals("#")) {
 					System.out.println("ignore comment line ===" + fileline + "===");
 					continue;
 				}
