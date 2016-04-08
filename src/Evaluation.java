@@ -440,9 +440,11 @@ public class Evaluation {
 		File importworkPathandFilenameHandle = null;
 
 		PrintWriter workprogressOutput = null;
+		PrintWriter osmoverpassOutput = null;
 		String importworkPathandFilename = "evaluation.active";
 		PrintWriter munininfoOutput = null;
 		String munininfoPathandFilename = "evaluationprogress.txt";
+		String muninosmoverpassPathandFilename = "muninosmoverpass.txt";
 		
 		try {
 			Handler handler = new ConsoleHandler();
@@ -550,6 +552,12 @@ public class Evaluation {
 				list_housenumbers = hnrreader.ReadListFromFile(evaluation, parameterImportdateiname, parameterFieldSeparator, parameterHousenumbersCaseSensity);
 				osm_housenumbers.setFieldsForUniqueAddress(list_housenumbers.getFieldsForUniqueAddress());
 				HousenumberCollection tempreceived_osm_housenumbers = osmreader.ReadData(evaluation, osm_housenumbers, parameterOSMRelationid);
+
+				osmoverpassOutput = new PrintWriter(new BufferedWriter(new OutputStreamWriter(
+					new FileOutputStream(muninosmoverpassPathandFilename),StandardCharsets.UTF_8)));
+				osmoverpassOutput.println(osmreader.getResponseStatesPrintable());
+				osmoverpassOutput.close();
+
 				if(tempreceived_osm_housenumbers != null) {
 					osm_housenumbers = tempreceived_osm_housenumbers;
 					evaluated_housenumbers = list_housenumbers.merge(osm_housenumbers, list_housenumbers.getAlternateFieldsForUniqueAddress());
@@ -660,6 +668,12 @@ if(parameterMunicipiality.equals("Köln")) {
 					osm_housenumbers.setAlternateFieldsForUniqueAddress(list_housenumbers.getAlternateFieldsForUniqueAddress());
 	
 					HousenumberCollection tempreceived_osm_housenumbers = osmreader.ReadData(evaluation, osm_housenumbers, actjob.osmrelationid);
+
+					osmoverpassOutput = new PrintWriter(new BufferedWriter(new OutputStreamWriter(
+						new FileOutputStream(muninosmoverpassPathandFilename),StandardCharsets.UTF_8)));
+					osmoverpassOutput.println(osmreader.getResponseStatesPrintable());
+					osmoverpassOutput.close();
+
 					if(tempreceived_osm_housenumbers == null) {
 						logger.log(Level.WARNING, "Warning: job will be ignored, because request to overpass for osm housenumbers failed for job " + actjob.toString() + "; started at " + jobstart.toString());
 						continue;

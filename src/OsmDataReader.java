@@ -86,7 +86,7 @@ import java.text.ParseException;
 
 
 public class OsmDataReader {
-	private static final int HAUSNUMMERSORTIERBARLENGTH = 4;
+	private static final Integer MAXOVERPASSTRIES = 3;
 	private static final Logger logger = Evaluation.logger;
 	static Connection con_mapnik = null;
 	static Connection con_housenumbers = null;
@@ -109,6 +109,8 @@ public class OsmDataReader {
 	TreeMap<Long, Way> gibmirways = new TreeMap<Long, Way>();
 	TreeMap<Long, Relation> gibmirrelations = new TreeMap<Long, Relation>();
 
+	Integer overpassResponseStates[] = new Integer[MAXOVERPASSTRIES + 2];
+	
 	Long pointsQueryDuration = 0L;
 	Long pointsAnalyzeDuration = 0L;
 	Long linesQueryDuration = 0L;
@@ -119,6 +121,37 @@ public class OsmDataReader {
 	String land = "";
 	Integer land_id = -1;
 	Integer stadt_id = -1;
+
+	public OsmDataReader() {
+		for(Integer numindex = 0; numindex < MAXOVERPASSTRIES + 2; numindex++) {
+			overpassResponseStates[numindex] = 0;
+		}
+	}
+
+	private void setResponseState(Integer numberfailedtries) {
+		if(numberfailedtries > (MAXOVERPASSTRIES + 1))
+			numberfailedtries = MAXOVERPASSTRIES + 1;
+		overpassResponseStates[numberfailedtries]++;
+	}
+
+	public String getResponseStatesPrintable() {
+		String outputtext = "";
+		Integer sum = 0;
+
+		for(Integer numindex = 0; numindex < MAXOVERPASSTRIES + 2; numindex++) {
+			sum += overpassResponseStates[numindex];
+		}
+
+		for(Integer numindex = 0; numindex < MAXOVERPASSTRIES + 2; numindex++) {
+			if(numindex > 0)
+				outputtext += "\t";
+			if(sum == 0)
+				outputtext += 0;
+			else
+				outputtext += Math.round(100 * overpassResponseStates[numindex] / sum);
+		}
+		return outputtext;
+	}
 
 	public void printTimeDurations() {
 		logger.log(Level.INFO, "Time for lines DB query in msec: " + linesQueryDuration);
@@ -238,8 +271,8 @@ public class OsmDataReader {
 		gibmirrelations.clear();
 		
 		
-		String overpass_url = "http://overpass-api.de/api/";
-		//String overpass_url = "http://overpass.osm.rambler.ru/cgi/";
+		//String overpass_url = "http://overpass-api.de/api/";
+		String overpass_url = "http://overpass.osm.rambler.ru/cgi/";
 		//String overpass_url = "http://dev.overpass-api.de/api_mmd/";
 		String overpass_queryurl = "interpreter?data=";
 		String overpass_query = "[timeout:3600][maxsize:1073741824]\n"
@@ -278,10 +311,10 @@ public class OsmDataReader {
 
 					if(numberfailedtries > 0) {
 						logger.log(Level.WARNING, "sleeping now for " + (2 * numberfailedtries) + " seconds before Overpass-Query will be tried again, now: " 
-							+ new java.util.Date().toString());
+							+ new Date().toString());
 						TimeUnit.SECONDS.sleep(2 * numberfailedtries);
 						logger.log(Level.WARNING, "ok, slept for " + (2 * numberfailedtries) + " seconds before Overpass-Query will be tried again, now: "
-							+ new java.util.Date().toString());
+							+ new Date().toString());
 					}
 					
 					urlConn = url.openConnection(); 
@@ -308,8 +341,9 @@ public class OsmDataReader {
 						+ (numberfailedtries + 1) + ", Request URL was ===" + url_string + "===, Details follows ...");					
 					logger.log(Level.WARNING, mue.toString());
 					numberfailedtries++;
-					if(numberfailedtries > 3) {
+					if(numberfailedtries > MAXOVERPASSTRIES) {
 						logger.log(Level.SEVERE, "Overpass API didn't delivered data, gave up after 3 failed requests, Request URL was ===" + url_string + "===");
+						setResponseState(numberfailedtries);
 						return null;
 					}
 					//logger.log(Level.WARNING, "sleeping now for " + (2 * numberfailedtries) + " seconds before Overpass-Query will be tried again");
@@ -319,8 +353,9 @@ public class OsmDataReader {
 						+ (numberfailedtries + 1) + ", Request URL was ===" + url_string + "===, Details follows ...");					
 					logger.log(Level.WARNING, ioe.toString());
 					numberfailedtries++;
-					if(numberfailedtries > 3) {
+					if(numberfailedtries > MAXOVERPASSTRIES) {
 						logger.log(Level.SEVERE, "Overpass API didn't delivered data, gave up after 3 failed requests, Request URL was ===" + url_string + "===");
+						setResponseState(numberfailedtries);
 						return null;
 					}
 					//logger.log(Level.WARNING, "sleeping now for " + (2 * numberfailedtries) + " seconds before Overpass-Query will be tried again");
@@ -328,6 +363,7 @@ public class OsmDataReader {
 				}
 			} while(! finishedoverpassquery);
 	
+			setResponseState(numberfailedtries);
 			String inputline = "";
 			if(responseContentEncoding.equals("gzip")) {
 				dis = new BufferedReader(new InputStreamReader(new GZIPInputStream(overpassResponse),"UTF-8"));
@@ -924,11 +960,11 @@ public class OsmDataReader {
 			preparedParameters += " [" + (statementIndex - 1) + "] ===((completepolygon))===";
 			logger.log(Level.FINE, "Prepared statement parameters " + preparedParameters);
 
-			java.util.Date local_query_start = new java.util.Date();
+			java.util.Date local_query_start = new Date();
 	
 			ResultSet pointsObjectsRS = pointsObjectsStmt.executeQuery();
 	
-			java.util.Date local_query_end = new java.util.Date();
+			java.util.Date local_query_end = new Date();
 			logger.log(Level.FINEST, "TIME single-step quer osm-ways in ms. "+(local_query_end.getTime()-local_query_start.getTime()));
 			pointsQueryDuration += local_query_end.getTime() - local_query_start.getTime();
 			local_query_start = local_query_end;
@@ -1019,7 +1055,7 @@ public class OsmDataReader {
 			}
 			pointsObjectsRS.close();
 			pointsObjectsStmt.close();
-			local_query_end = new java.util.Date();
+			local_query_end = new Date();
 			logger.log(Level.FINEST, "Number of osm point address objects: " + countFoundObjects);
 			logger.log(Level.FINEST, "TIME single-step analyzing osm-ways in ms. "+(local_query_end.getTime()-local_query_start.getTime()));
 			pointsAnalyzeDuration += local_query_end.getTime() - local_query_start.getTime();
@@ -1056,11 +1092,11 @@ public class OsmDataReader {
 			preparedParameters += " [" + (statementIndex - 1) + "] ===((completepolygon))===";
 			logger.log(Level.FINE, "Prepared statement parameters " + preparedParameters);
 	
-			local_query_start = new java.util.Date();
+			local_query_start = new Date();
 	
 			ResultSet linesObjectsRS = linesObjectsStmt.executeQuery();
 	
-			local_query_end = new java.util.Date();
+			local_query_end = new Date();
 			logger.log(Level.FINEST, "TIME single-step quer osm-ways in ms. "+(local_query_end.getTime()-local_query_start.getTime()));
 			linesQueryDuration += local_query_end.getTime() - local_query_start.getTime();
 			local_query_start = local_query_end;
@@ -1151,7 +1187,7 @@ public class OsmDataReader {
 			}
 			linesObjectsRS.close();
 			linesObjectsStmt.close();
-			local_query_end = new java.util.Date();
+			local_query_end = new Date();
 			logger.log(Level.FINEST, "Number of osm line address objects: " + countFoundObjects);
 			logger.log(Level.FINEST, "TIME single-step analyzing osm-ways in ms. "+(local_query_end.getTime()-local_query_start.getTime()));
 			linesAnalyzeDuration += local_query_end.getTime() - local_query_start.getTime();
@@ -1188,11 +1224,11 @@ public class OsmDataReader {
 			preparedParameters += " [" + (statementIndex - 1) + "] ===((completepolygon))===";
 			logger.log(Level.FINE, "Prepared statement parameters " + preparedParameters);
 		
-			local_query_start = new java.util.Date();
+			local_query_start = new Date();
 		
 			ResultSet polygonsObjectsRS = polygonsObjectsStmt.executeQuery();
 		
-			local_query_end = new java.util.Date();
+			local_query_end = new Date();
 			logger.log(Level.FINEST, "TIME single-step quer osm-ways in ms. "+(local_query_end.getTime()-local_query_start.getTime()));
 			polygonsQueryDuration += local_query_end.getTime() - local_query_start.getTime();
 			local_query_start = local_query_end;
@@ -1283,7 +1319,7 @@ public class OsmDataReader {
 			}
 			polygonsObjectsRS.close();
 			polygonsObjectsStmt.close();
-			local_query_end = new java.util.Date();
+			local_query_end = new Date();
 			logger.log(Level.FINEST, "Number of osm polygon address objects: " + countFoundObjects);
 			logger.log(Level.FINEST, "TIME single-step analyzing osm-ways in ms. "+(local_query_end.getTime()-local_query_start.getTime()));
 			polygonsAnalyzeDuration += local_query_end.getTime() - local_query_start.getTime();
