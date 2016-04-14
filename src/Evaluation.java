@@ -733,6 +733,15 @@ if(parameterMunicipiality.equals("Köln")) {
 			osmreader.printTimeDurations();
 			osmreader.closeDBConnection();
 
+				// delete munin report file at program end
+			File muninosmoverpassPathandFilenameHandle = new File(muninosmoverpassPathandFilename);
+			if(muninosmoverpassPathandFilenameHandle.exists() && !muninosmoverpassPathandFilenameHandle.isDirectory()) {
+				if(muninosmoverpassPathandFilenameHandle.delete())
+					System.out.println("Info: Munin osm overpass file was killed at program end correctly");
+				else
+					System.out.println("ERROR: Munin osm overpass file couldn't be killed at program end correctly, filename was " + muninosmoverpassPathandFilename);
+			}
+
 			java.util.Date programEnd = new java.util.Date();
 			logger.log(Level.INFO, "Program finished at " + programEnd.toString() + ", Duration in sec: "
 				+ (programEnd.getTime() - programStart.getTime())/1000);
