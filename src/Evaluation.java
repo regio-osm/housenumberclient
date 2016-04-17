@@ -482,8 +482,6 @@ public class Evaluation {
 		
 				// set working filename to be sure, that only one instance is running in one file directory:
 				//   both important for overpass requests and at least for -queuejobs mode
-			String filename = "";
-			String importworkoutputline = "";
 			importworkPathandFilenameHandle = new File(importworkPathandFilename);
 			if(importworkPathandFilenameHandle.exists() && !importworkPathandFilenameHandle.isDirectory()) {
 				Long filedate_milliseconds = importworkPathandFilenameHandle.lastModified();
@@ -498,7 +496,25 @@ public class Evaluation {
 					importworkPathandFilenameHandle.delete();
 					importworkPathandFilenameHandle = new File(importworkPathandFilename);
 				} else {
-					System.out.println("Evaluation already active, stopp processign of this program");
+					// delete munin report file at program end
+					File muninosmoverpassPathandFilenameHandle = new File(muninosmoverpassPathandFilename);
+					if(muninosmoverpassPathandFilenameHandle.exists() && !muninosmoverpassPathandFilenameHandle.isDirectory()) {
+						filedate_milliseconds = muninosmoverpassPathandFilenameHandle.lastModified();
+						nowdate_milliseconds = new Date().getTime();
+						System.out.println("munin filedate_msec ===" + filedate_milliseconds + "===");
+						System.out.println("nowdate msec  ===" + nowdate_milliseconds + "===");
+						System.out.println("diff now minus munin filedate msec ===" + (nowdate_milliseconds - filedate_milliseconds));
+						System.out.println("diff now minus munin filedate sec ===" + (nowdate_milliseconds - filedate_milliseconds)/1000);
+						maxtimeAssumeSystemWorks_milliseconds = (long) (5 * 60 * 1000);		// 5 minutes
+						if((nowdate_milliseconds - filedate_milliseconds) > maxtimeAssumeSystemWorks_milliseconds) {
+							System.out.println("Evaluation active File found, but to old (in sec: " + ((nowdate_milliseconds - filedate_milliseconds)/1000) + "), it will be deleted");
+							if(muninosmoverpassPathandFilenameHandle.delete())
+								System.out.println("Info: Munin osm overpass file was killed at program end correctly");
+							else
+								System.out.println("ERROR: Munin osm overpass file couldn't be killed at program end correctly, filename was " + muninosmoverpassPathandFilename);
+						}
+					}
+					System.out.println("Evaluation already active, stopp processing of this program");
 					return;
 				}
 			}
