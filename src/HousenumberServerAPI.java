@@ -157,7 +157,7 @@ public class HousenumberServerAPI {
 					String linecolumns[] = fileline.split("\t");
 					
 					Job actjob = new Job(linecolumns[0], linecolumns[1], linecolumns[2], linecolumns[3], 
-						Integer.parseInt(linecolumns[4]), linecolumns[5], linecolumns[6], Long.parseLong(linecolumns[7]));
+						Integer.parseInt(linecolumns[4]), linecolumns[5],  Long.parseLong(linecolumns[8]), linecolumns[6], Long.parseLong(linecolumns[7]));
 					foundjobs.add(actjob);
 				}
 			}
@@ -257,7 +257,7 @@ public class HousenumberServerAPI {
 					String linecolumns[] = fileline.split("\t");
 					
 					Job actjob = new Job(linecolumns[0], linecolumns[1], linecolumns[2], linecolumns[3], 
-						Integer.parseInt(linecolumns[4]), linecolumns[5], linecolumns[6], Long.parseLong(linecolumns[7]), linecolumns[8]);
+						Integer.parseInt(linecolumns[4]), linecolumns[5], Long.parseLong(linecolumns[9]), linecolumns[6], Long.parseLong(linecolumns[7]), linecolumns[8]);
 					foundjobs.add(actjob);
 				}
 			}
@@ -352,7 +352,8 @@ public class HousenumberServerAPI {
 				String linecolumns[] = fileline.split("\t");
 
 				Job actjob = new Job(linecolumns[0], linecolumns[1], linecolumns[2], linecolumns[3], 
-						Integer.parseInt(linecolumns[4]), linecolumns[5], linecolumns[6], Long.parseLong(linecolumns[7]));
+						Integer.parseInt(linecolumns[4]), linecolumns[5], Long.parseLong(linecolumns[8]), 
+						linecolumns[6], Long.parseLong(linecolumns[7]));
 				foundjobs.add(actjob);
 			}
 			writer.close();
@@ -461,6 +462,10 @@ public class HousenumberServerAPI {
 			    temptoutput.append("Content-Disposition: form-data; name=\"Jobname\"" + "\r\n");
 			    temptoutput.append("\r\n");
 			    temptoutput.append(evaluation.getJobname() + "\r\n");
+			    temptoutput.append("--" + boundary + "\r\n");
+			    temptoutput.append("Content-Disposition: form-data; name=\"JobID\"" + "\r\n");
+			    temptoutput.append("\r\n");
+			    temptoutput.append(evaluation.getJobid() + "\r\n");
 			    temptoutput.append("--" + boundary + "\r\n");
 			    temptoutput.append("Content-Disposition: form-data; name=\"Serverobjectid\"" + "\r\n");
 			    temptoutput.append("\r\n");

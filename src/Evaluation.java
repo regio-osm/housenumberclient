@@ -37,6 +37,7 @@ public class Evaluation {
 	private String officialkeysId = "";
 	private Integer adminLevel = 0;
 	private String jobname = "";
+	private Long jobid = 0L;
 	private String subid = "";
 	private String serverobjectid = "";
 	private String uselanguagecode = "";
@@ -56,6 +57,7 @@ public class Evaluation {
 		uselanguagecode = "";
 		adminLevel = 0;
 		jobname = "";
+		jobid = 0L;
 		housenumberlist.clear();
 	}
 
@@ -89,6 +91,10 @@ public class Evaluation {
 
 	public String getJobname() {
 		return this.jobname;
+	}
+
+	public Long getJobid() {
+		return this.jobid;
 	}
 
 	public String getJobCountry() {
@@ -167,11 +173,12 @@ public class Evaluation {
 	 * @param country
 	 * @param municipality
 	 */
-	public void setMunicipalityAndJobname(String country, String countrycode, String municipality, String jobname) {
+	public void setMunicipalityAndJobname(String country, String countrycode, String municipality, String jobname, Long jobid) {
 		this.country = country;
 		this.countrycode = countrycode;
 		this.municipality = municipality;
 		this.jobname = jobname;
+		this.jobid = jobid;
 	}
 
 
@@ -214,6 +221,7 @@ public class Evaluation {
 		this.officialkeysId = job.officialkeysId;
 		this.adminLevel = job.adminLevel;
 		this.jobname = job.jobname;
+		this.jobid = job.jobid;
 		this.subid = job.subid;
 		this.serverobjectid = job.serverobjectid;
 	}
@@ -440,7 +448,7 @@ public class Evaluation {
 		File importworkPathandFilenameHandle = null;
 
 		PrintWriter workprogressOutput = null;
-		PrintWriter osmoverpassOutput = null;
+		PrintWriter muninoverpassOutput = null;
 		String importworkPathandFilename = "evaluation.active";
 		PrintWriter munininfoOutput = null;
 		String munininfoPathandFilename = "evaluationprogress.txt";
@@ -479,6 +487,25 @@ public class Evaluation {
 			logger.addHandler(fhandler);
 			logger.setLevel(configuration.logging_console_level);
 
+			// delete munin report file, if old than x minutes
+			File muninosmoverpassPathandFilenameHandle = new File(muninosmoverpassPathandFilename);
+			if(muninosmoverpassPathandFilenameHandle.exists() && !muninosmoverpassPathandFilenameHandle.isDirectory()) {
+				Long filedate_milliseconds = muninosmoverpassPathandFilenameHandle.lastModified();
+				Long nowdate_milliseconds = new Date().getTime();
+				System.out.println("munin filedate_msec ===" + filedate_milliseconds + "===");
+				System.out.println("nowdate msec  ===" + nowdate_milliseconds + "===");
+				System.out.println("diff now minus munin filedate msec ===" + (nowdate_milliseconds - filedate_milliseconds));
+				System.out.println("diff now minus munin filedate sec ===" + (nowdate_milliseconds - filedate_milliseconds)/1000);
+				Long maxtimeAssumeSystemWorks_milliseconds = (long) (5 * 60 * 1000);		// 5 minutes
+				if((nowdate_milliseconds - filedate_milliseconds) > maxtimeAssumeSystemWorks_milliseconds) {
+					System.out.println("Evaluation active File found, but to old (in sec: " + ((nowdate_milliseconds - filedate_milliseconds)/1000) + "), it will be deleted");
+					if(muninosmoverpassPathandFilenameHandle.delete())
+						System.out.println("Info: Munin osm overpass file was killed at program end correctly");
+					else
+						System.out.println("ERROR: Munin osm overpass file couldn't be killed at program end correctly, filename was " + muninosmoverpassPathandFilename);
+				}
+			}
+			
 		
 				// set working filename to be sure, that only one instance is running in one file directory:
 				//   both important for overpass requests and at least for -queuejobs mode
@@ -496,24 +523,6 @@ public class Evaluation {
 					importworkPathandFilenameHandle.delete();
 					importworkPathandFilenameHandle = new File(importworkPathandFilename);
 				} else {
-					// delete munin report file at program end
-					File muninosmoverpassPathandFilenameHandle = new File(muninosmoverpassPathandFilename);
-					if(muninosmoverpassPathandFilenameHandle.exists() && !muninosmoverpassPathandFilenameHandle.isDirectory()) {
-						filedate_milliseconds = muninosmoverpassPathandFilenameHandle.lastModified();
-						nowdate_milliseconds = new Date().getTime();
-						System.out.println("munin filedate_msec ===" + filedate_milliseconds + "===");
-						System.out.println("nowdate msec  ===" + nowdate_milliseconds + "===");
-						System.out.println("diff now minus munin filedate msec ===" + (nowdate_milliseconds - filedate_milliseconds));
-						System.out.println("diff now minus munin filedate sec ===" + (nowdate_milliseconds - filedate_milliseconds)/1000);
-						maxtimeAssumeSystemWorks_milliseconds = (long) (5 * 60 * 1000);		// 5 minutes
-						if((nowdate_milliseconds - filedate_milliseconds) > maxtimeAssumeSystemWorks_milliseconds) {
-							System.out.println("Evaluation active File found, but to old (in sec: " + ((nowdate_milliseconds - filedate_milliseconds)/1000) + "), it will be deleted");
-							if(muninosmoverpassPathandFilenameHandle.delete())
-								System.out.println("Info: Munin osm overpass file was killed at program end correctly");
-							else
-								System.out.println("ERROR: Munin osm overpass file couldn't be killed at program end correctly, filename was " + muninosmoverpassPathandFilename);
-						}
-					}
 					System.out.println("Evaluation already active, stopp processing of this program");
 					return;
 				}
@@ -569,10 +578,10 @@ public class Evaluation {
 				osm_housenumbers.setFieldsForUniqueAddress(list_housenumbers.getFieldsForUniqueAddress());
 				HousenumberCollection tempreceived_osm_housenumbers = osmreader.ReadData(evaluation, osm_housenumbers, parameterOSMRelationid);
 
-				osmoverpassOutput = new PrintWriter(new BufferedWriter(new OutputStreamWriter(
+				muninoverpassOutput = new PrintWriter(new BufferedWriter(new OutputStreamWriter(
 					new FileOutputStream(muninosmoverpassPathandFilename),StandardCharsets.UTF_8)));
-				osmoverpassOutput.println(osmreader.getResponseStatesPrintable());
-				osmoverpassOutput.close();
+				muninoverpassOutput.println(osmreader.getResponseStatesPrintable());
+				muninoverpassOutput.close();
 
 				if(tempreceived_osm_housenumbers != null) {
 					osm_housenumbers = tempreceived_osm_housenumbers;
@@ -685,15 +694,16 @@ if(parameterMunicipiality.equals("Köln")) {
 	
 					HousenumberCollection tempreceived_osm_housenumbers = osmreader.ReadData(evaluation, osm_housenumbers, actjob.osmrelationid);
 
-					osmoverpassOutput = new PrintWriter(new BufferedWriter(new OutputStreamWriter(
+					muninoverpassOutput = new PrintWriter(new BufferedWriter(new OutputStreamWriter(
 						new FileOutputStream(muninosmoverpassPathandFilename),StandardCharsets.UTF_8)));
-					osmoverpassOutput.println(osmreader.getResponseStatesPrintable());
-					osmoverpassOutput.close();
+					muninoverpassOutput.println(osmreader.getResponseStatesPrintable());
+					muninoverpassOutput.close();
 
 					if(tempreceived_osm_housenumbers == null) {
 						logger.log(Level.WARNING, "Warning: job will be ignored, because request to overpass for osm housenumbers failed for job " + actjob.toString() + "; started at " + jobstart.toString());
 						continue;
 					}
+
 					osm_housenumbers = tempreceived_osm_housenumbers;
 					logger.log(Level.INFO, "Number of OSM housenumbers: " + osm_housenumbers.length());
 					evaluation.evaluationtime = overpassloadstart.getTime();

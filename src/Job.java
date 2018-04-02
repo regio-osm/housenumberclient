@@ -30,6 +30,7 @@ public class Job {
 	public String officialkeysId = "";
 	public Integer adminLevel = 0;
 	public String jobname = "";
+	public Long jobid = 0L;
 	public String subid = "";
 	public Long osmrelationid = 0L;
 	public String serverobjectid = "";		// optionally unique id from server to give information about source of job (up to now set only when job is from jobqueue in 06/2015)
@@ -41,30 +42,33 @@ public class Job {
 		this.officialkeysId = "";
 		this.adminLevel = 0;
 		this.jobname = "";
+		this.jobid = 0L;
 		this.subid = "";
 		this.osmrelationid = 0L;
 		this.serverobjectid = "";
 	}
 
-	public Job(String country, String countrycode, String municipality, String officialkeysId, Integer adminLevel, String jobname, String subid, Long relationid) {
+	public Job(String country, String countrycode, String municipality, String officialkeysId, Integer adminLevel, String jobname, long jobid, String subid, Long relationid) {
 		this.country = country;
 		this.countrycode = countrycode;
 		this.municipality = municipality;
 		this.officialkeysId = officialkeysId;
 		this.adminLevel = adminLevel;
 		this.jobname = jobname;
+		this.jobid = jobid;
 		this.subid = subid;
 		this.osmrelationid = relationid;
 		this.serverobjectid = serverobjectid;
 	}
 
-	public Job(String country, String countrycode, String municipality, String officialkeysId, Integer adminLevel, String jobname, String subid, Long relationid, String serverobjectid) {
+	public Job(String country, String countrycode, String municipality, String officialkeysId, Integer adminLevel, String jobname, long jobid, String subid, Long relationid, String serverobjectid) {
 		this.country = country;
 		this.countrycode = countrycode;
 		this.municipality = municipality;
 		this.officialkeysId = officialkeysId;
 		this.adminLevel = adminLevel;
 		this.jobname = jobname;
+		this.jobid = jobid;
 		this.subid = subid;
 		this.osmrelationid = relationid;
 		this.serverobjectid = serverobjectid;
@@ -76,7 +80,7 @@ public class Job {
 
 	public String toString() {
 		String output = "country=" + country + ", countrycode=" + countrycode + ", municipality=" + municipality + ", officialkeysId=" + officialkeysId + ", "
-			+ "adminLevel=" + adminLevel + ", jobname=" + jobname + ", subid=" + subid + ", osmrelationid=" + osmrelationid;
+			+ "adminLevel=" + adminLevel + ", jobname=" + jobname + ", jobid= " + jobid + ", subid=" + subid + ", osmrelationid=" + osmrelationid;
 		return output; 
 	}
 }

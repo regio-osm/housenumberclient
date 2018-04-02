@@ -11,6 +11,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
+import java.net.ConnectException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
@@ -34,6 +35,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.zip.GZIPInputStream;
+
 
 
 
@@ -271,8 +273,8 @@ public class OsmDataReader {
 		gibmirrelations.clear();
 		
 		
-		//String overpass_url = "http://overpass-api.de/api/";
-		String overpass_url = "http://overpass.osm.rambler.ru/cgi/";
+		String overpass_url = "http://overpass-api.de/api/";
+		//String overpass_url = "http://overpass.osm.rambler.ru/cgi/";
 		//String overpass_url = "http://dev.overpass-api.de/api_mmd/";
 		String overpass_queryurl = "interpreter?data=";
 		String overpass_query = "[timeout:3600][maxsize:1073741824]\n"
@@ -348,6 +350,47 @@ public class OsmDataReader {
 					}
 					//logger.log(Level.WARNING, "sleeping now for " + (2 * numberfailedtries) + " seconds before Overpass-Query will be tried again");
 					//TimeUnit.SECONDS.sleep(2 * numberfailedtries);
+				} catch( ConnectException conerror) {
+					numberfailedtries++;
+					if(numberfailedtries > MAXOVERPASSTRIES) {
+						logger.log(Level.SEVERE, "Overpass API didn't delivered data, gave up after 3 failed requests, Request URL was ===" + url_string + "===");
+						setResponseState(numberfailedtries);
+						return null;
+					}
+
+					url_string = overpass_url + "status";
+					System.out.println("url to get overpass status for this server requests ===" + url_string + "===");
+					url = new URL(url_string);
+					urlConn = url.openConnection(); 
+					urlConn.setDoInput(true); 
+					urlConn.setUseCaches(false);
+					urlConn.setRequestProperty("User-Agent", "regio-osm.de Housenumber Evaluation Client, contact: strassenliste@diesei.de");
+					urlConn.setRequestProperty("Accept-Encoding", "gzip, compress");
+					
+					overpassResponse = urlConn.getInputStream(); 
+		
+					Integer headeri = 1;
+					logger.log(Level.FINE, "Overpass URL Response Header-Fields ...");
+					while(urlConn.getHeaderFieldKey(headeri) != null) {
+						logger.log(Level.FINE, "  Header # " + headeri 
+							+ ":  [" + urlConn.getHeaderFieldKey(headeri)
+							+ "] ===" + urlConn.getHeaderField(headeri) + "===");
+						if(urlConn.getHeaderFieldKey(headeri).equals("Content-Encoding"))
+							responseContentEncoding = urlConn.getHeaderField(headeri);
+						headeri++;
+					}
+					if(responseContentEncoding.equals("gzip")) {
+						dis = new BufferedReader(new InputStreamReader(new GZIPInputStream(overpassResponse),"UTF-8"));
+					} else {
+						dis = new BufferedReader(new InputStreamReader(overpassResponse,"UTF-8"));
+					}
+					String inputline = "";
+					while ((inputline = dis.readLine()) != null)
+					{ 
+						System.out.println("Content ===" + inputline + "===\n");
+					}
+					dis.close();
+				
 				} catch (IOException ioe) {
 					logger.log(Level.WARNING, "Overpass API request produced an Input/Output Exception  (Request #" 
 						+ (numberfailedtries + 1) + ", Request URL was ===" + url_string + "===, Details follows ...");					
@@ -360,6 +403,42 @@ public class OsmDataReader {
 					}
 					//logger.log(Level.WARNING, "sleeping now for " + (2 * numberfailedtries) + " seconds before Overpass-Query will be tried again");
 					//TimeUnit.SECONDS.sleep(2 * numberfailedtries);
+
+				
+					url_string = overpass_url + "status";
+					System.out.println("url to get overpass status for this server requests ===" + url_string + "===");
+					url = new URL(url_string);
+					urlConn = url.openConnection(); 
+					urlConn.setDoInput(true); 
+					urlConn.setUseCaches(false);
+					urlConn.setRequestProperty("User-Agent", "regio-osm.de Housenumber Evaluation Client, contact: strassenliste@diesei.de");
+					urlConn.setRequestProperty("Accept-Encoding", "gzip, compress");
+					
+					overpassResponse = urlConn.getInputStream(); 
+		
+					Integer headeri = 1;
+					logger.log(Level.FINE, "Overpass URL Response Header-Fields ...");
+					while(urlConn.getHeaderFieldKey(headeri) != null) {
+						logger.log(Level.FINE, "  Header # " + headeri 
+							+ ":  [" + urlConn.getHeaderFieldKey(headeri)
+							+ "] ===" + urlConn.getHeaderField(headeri) + "===");
+						if(urlConn.getHeaderFieldKey(headeri).equals("Content-Encoding"))
+							responseContentEncoding = urlConn.getHeaderField(headeri);
+						headeri++;
+					}
+					if(responseContentEncoding.equals("gzip")) {
+						dis = new BufferedReader(new InputStreamReader(new GZIPInputStream(overpassResponse),"UTF-8"));
+					} else {
+						dis = new BufferedReader(new InputStreamReader(overpassResponse,"UTF-8"));
+					}
+					String inputline = "";
+					while ((inputline = dis.readLine()) != null)
+					{ 
+						System.out.println("Content ===" + inputline + "===\n");
+					}
+					dis.close();
+				
+				
 				}
 			} while(! finishedoverpassquery);
 	
