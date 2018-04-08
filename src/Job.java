@@ -24,15 +24,17 @@ import java.util.List;
 
 
 public class Job {
+	public final long jobidUnset = 0L;
+	
 	public String country = "";
 	public String countrycode = "";
 	public String municipality = "";
 	public String officialkeysId = "";
-	public Integer adminLevel = 0;
+	public int adminLevel = 0;
 	public String jobname = "";
-	public Long jobid = 0L;
+	public long jobid = jobidUnset;
 	public String subid = "";
-	public Long osmrelationid = 0L;
+	public long osmrelationid = 0L;
 	public String serverobjectid = "";		// optionally unique id from server to give information about source of job (up to now set only when job is from jobqueue in 06/2015)
 
 	public Job() {
@@ -42,12 +44,36 @@ public class Job {
 		this.officialkeysId = "";
 		this.adminLevel = 0;
 		this.jobname = "";
-		this.jobid = 0L;
+		this.jobid = jobidUnset;
 		this.subid = "";
 		this.osmrelationid = 0L;
 		this.serverobjectid = "";
 	}
 
+	/**
+	 * old version without jobid, as productive still 2018-04
+	 * @param country
+	 * @param countrycode
+	 * @param municipality
+	 * @param officialkeysId
+	 * @param adminLevel
+	 * @param jobname
+	 * @param subid
+	 * @param relationid
+	 */
+	public Job(String country, String countrycode, String municipality, String officialkeysId, Integer adminLevel, String jobname, String subid, Long relationid) {
+		this.country = country;
+		this.countrycode = countrycode;
+		this.municipality = municipality;
+		this.officialkeysId = officialkeysId;
+		this.adminLevel = adminLevel;
+		this.jobname = jobname;
+		this.subid = subid;
+		this.osmrelationid = relationid;
+		this.serverobjectid = serverobjectid;
+	}
+
+	
 	public Job(String country, String countrycode, String municipality, String officialkeysId, Integer adminLevel, String jobname, long jobid, String subid, Long relationid) {
 		this.country = country;
 		this.countrycode = countrycode;
@@ -61,6 +87,18 @@ public class Job {
 		this.serverobjectid = serverobjectid;
 	}
 
+	public Job(String country, String countrycode, String municipality, String officialkeysId, Integer adminLevel, String jobname, String subid, Long relationid, String serverobjectid) {
+		this.country = country;
+		this.countrycode = countrycode;
+		this.municipality = municipality;
+		this.officialkeysId = officialkeysId;
+		this.adminLevel = adminLevel;
+		this.jobname = jobname;
+		this.subid = subid;
+		this.osmrelationid = relationid;
+		this.serverobjectid = serverobjectid;
+	}
+	
 	public Job(String country, String countrycode, String municipality, String officialkeysId, Integer adminLevel, String jobname, long jobid, String subid, Long relationid, String serverobjectid) {
 		this.country = country;
 		this.countrycode = countrycode;

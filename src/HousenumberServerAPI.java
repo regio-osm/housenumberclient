@@ -156,8 +156,14 @@ public class HousenumberServerAPI {
 					}
 					String linecolumns[] = fileline.split("\t");
 					
-					Job actjob = new Job(linecolumns[0], linecolumns[1], linecolumns[2], linecolumns[3], 
-						Integer.parseInt(linecolumns[4]), linecolumns[5],  Long.parseLong(linecolumns[8]), linecolumns[6], Long.parseLong(linecolumns[7]));
+					Job actjob = null; 
+					if(linecolumns.length == 8) {
+						actjob = new Job(linecolumns[0], linecolumns[1], linecolumns[2], linecolumns[3], 
+							Integer.parseInt(linecolumns[4]), linecolumns[5], linecolumns[6], Long.parseLong(linecolumns[7]));
+					} else if(linecolumns.length == 9) {
+						actjob = new Job(linecolumns[0], linecolumns[1], linecolumns[2], linecolumns[3], 
+							Integer.parseInt(linecolumns[4]), linecolumns[5],  Long.parseLong(linecolumns[8]), linecolumns[6], Long.parseLong(linecolumns[7]));
+					}
 					foundjobs.add(actjob);
 				}
 			}
@@ -256,8 +262,15 @@ public class HousenumberServerAPI {
 					}
 					String linecolumns[] = fileline.split("\t");
 					
-					Job actjob = new Job(linecolumns[0], linecolumns[1], linecolumns[2], linecolumns[3], 
-						Integer.parseInt(linecolumns[4]), linecolumns[5], Long.parseLong(linecolumns[9]), linecolumns[6], Long.parseLong(linecolumns[7]), linecolumns[8]);
+					Job actjob = null;
+					if(linecolumns.length == 9) {
+						actjob = new Job(linecolumns[0], linecolumns[1], linecolumns[2], linecolumns[3], 
+							Integer.parseInt(linecolumns[4]), linecolumns[5], linecolumns[6], Long.parseLong(linecolumns[7]), linecolumns[8]);
+					} else if(linecolumns.length == 10) {
+						actjob = new Job(linecolumns[0], linecolumns[1], linecolumns[2], linecolumns[3], 
+							Integer.parseInt(linecolumns[4]), linecolumns[5], Long.parseLong(linecolumns[9]), 
+							linecolumns[6], Long.parseLong(linecolumns[7]), linecolumns[8]);
+					}
 					foundjobs.add(actjob);
 				}
 			}
@@ -351,9 +364,15 @@ public class HousenumberServerAPI {
 				}
 				String linecolumns[] = fileline.split("\t");
 
-				Job actjob = new Job(linecolumns[0], linecolumns[1], linecolumns[2], linecolumns[3], 
+				Job actjob = null;
+				if (linecolumns.length == 8) {
+					actjob = new Job(linecolumns[0], linecolumns[1], linecolumns[2], linecolumns[3], 
+						Integer.parseInt(linecolumns[4]), linecolumns[5], linecolumns[6], Long.parseLong(linecolumns[7]));
+				} else if(linecolumns.length == 9) {
+					actjob = new Job(linecolumns[0], linecolumns[1], linecolumns[2], linecolumns[3], 
 						Integer.parseInt(linecolumns[4]), linecolumns[5], Long.parseLong(linecolumns[8]), 
 						linecolumns[6], Long.parseLong(linecolumns[7]));
+				}
 				foundjobs.add(actjob);
 			}
 			writer.close();
@@ -564,6 +583,7 @@ public class HousenumberServerAPI {
 			urlParameters += "&" + "subid=" + URLEncoder.encode(evaluation.getSubid(),"UTF-8");
 			urlParameters += "&" + "adminlevel=" + evaluation.getAdminLevel();
 			urlParameters += "&" + "jobname=" + URLEncoder.encode(evaluation.getJobname(),"UTF-8");
+			urlParameters += "&" + "job_id=" + evaluation.getJobid();
 			urlParameters += "&" + "officialkeysid=" + URLEncoder.encode(evaluation.getOfficialkeysId(),"UTF-8");
 			urlParameters += "&" + "serverobjectid=" + URLEncoder.encode(evaluation.getServerobjectid(),"UTF-8");
 
