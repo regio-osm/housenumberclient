@@ -13,6 +13,7 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 import java.util.logging.ConsoleHandler;
@@ -505,18 +506,13 @@ public class Evaluation {
 						System.out.println("ERROR: Munin osm overpass file couldn't be killed at program end correctly, filename was " + muninosmoverpassPathandFilename);
 				}
 			}
-			
-		
+					
 				// set working filename to be sure, that only one instance is running in one file directory:
 				//   both important for overpass requests and at least for -queuejobs mode
 			importworkPathandFilenameHandle = new File(importworkPathandFilename);
 			if(importworkPathandFilenameHandle.exists() && !importworkPathandFilenameHandle.isDirectory()) {
 				Long filedate_milliseconds = importworkPathandFilenameHandle.lastModified();
 				Long nowdate_milliseconds = new Date().getTime();
-				System.out.println("filedate_msec ===" + filedate_milliseconds + "===");
-				System.out.println("nowdate msec  ===" + nowdate_milliseconds + "===");
-				System.out.println("diff now minus filedate msec ===" + (nowdate_milliseconds - filedate_milliseconds));
-				System.out.println("diff now minus filedate sec ===" + (nowdate_milliseconds - filedate_milliseconds)/1000);
 				Long maxtimeAssumeSystemWorks_milliseconds = (long) (30 * 60 * 1000);		// 30 minutes
 				if((nowdate_milliseconds - filedate_milliseconds) > maxtimeAssumeSystemWorks_milliseconds) {
 					System.out.println("Evaluation active File found, but to old (in sec: " + ((nowdate_milliseconds - filedate_milliseconds)/1000) + "), it will be deleted");
