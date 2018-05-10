@@ -527,7 +527,6 @@ public class HousenumberCollection {
 		outputbuffer.append("	<head>\n");
 		outputbuffer.append("		<meta http-equiv='Content-Type' content='text/html; charset=utf-8'>\n");
 		outputbuffer.append("		<link rel='stylesheet' href='http://regio-osm.de/hausnummerauswertung/css/normalize.css'>\n");
-		outputbuffer.append("		<link href='http://fonts.googleapis.com/css?family=Droid+Sans:400,700' rel='stylesheet' type='text/css'>\n");
 		outputbuffer.append("		<link rel='stylesheet' href='http://regio-osm.de/hausnummerauswertung/css/main.css'>\n");
 		outputbuffer.append("		<link rel='stylesheet' type='text/css' href='http://regio-osm.de/hausnummerauswertung/css/hausnummern.css'>\n");
 		outputbuffer.append("		<script type='text/javascript'>\n");
