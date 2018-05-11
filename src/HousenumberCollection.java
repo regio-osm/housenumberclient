@@ -533,7 +533,7 @@ public class HousenumberCollection {
 		outputbuffer.append("		function setcookie() {\n");
 		outputbuffer.append("			var lang = document.getElementById('language').value;\n");
 		outputbuffer.append("			//TODO\n");
-		outputbuffer.append("			document.cookie = 'language='+lang+'; expires=Fri, 3 Aug 2019 20:47:11 UTC; path=/hausnummerauswertung';\n");
+		outputbuffer.append("			document.cookie = 'language='+lang+'; expires=Thu, 24 May 2018 20:47:11 UTC; path=/hausnummerauswertung';\n");
 		outputbuffer.append("			window.location.reload();\n");
 		outputbuffer.append("		}\n");
 		outputbuffer.append("		function readCookie(name) {\n");
