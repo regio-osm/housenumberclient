@@ -87,16 +87,15 @@ public class Housenumber {
 		 * 
 		 * @return Key for the cache entry of the object. Normally will be build with streetname and housenumber
 		 */
-//TODO in municipalities, where streetname and housenumber are not unique, one more value must be added, for example postcode
 	public String getListKey() {
 		String listkey = "";
 
 		if(this.fieldsForUniqueAddress.compareTo(HousenumberCollection.FieldsForUniqueAddress.STREET_HOUSENUMBER) == 0)
-			listkey = this.getStrasse().toLowerCase() + this.getHausnummerSortierbar().toLowerCase();
+			listkey = this.getStrasse().toLowerCase() + this.getHousenumberNormalized();
 		else if(this.fieldsForUniqueAddress.compareTo(HousenumberCollection.FieldsForUniqueAddress.STREET_POSTCODE_HOUSENUMBER) == 0)
-			listkey = this.getStrasse().toLowerCase()  + this.getPostcode().toLowerCase() + this.getHausnummerSortierbar().toLowerCase();
+			listkey = this.getStrasse().toLowerCase()  + this.getPostcode().toLowerCase() + this.getHousenumberNormalized();
 		else if(this.fieldsForUniqueAddress.compareTo(HousenumberCollection.FieldsForUniqueAddress.POSTCODE_HOUSENUMBER) == 0)
-			listkey = this.getPostcode().toLowerCase() + this.getHausnummerSortierbar().toLowerCase();
+			listkey = this.getPostcode().toLowerCase() + this.getHousenumberNormalized();
 		return listkey;
 	}
 
@@ -105,16 +104,15 @@ public class Housenumber {
 		 * 
 		 * @return Key for the cache entry of the object. Normally will be build with streetname and housenumber
 		 */
-	//TODO in municipalities, where streetname and housenumber are not unique, one more value must be added, for example postcode
 	public String getListKey(String cachename) {
 		String listkey = "";
 	
 		if(this.fieldsForUniqueAddress.compareTo(HousenumberCollection.FieldsForUniqueAddress.STREET_HOUSENUMBER) == 0)
-			listkey = cachename + this.getStrasse().toLowerCase() + this.getHausnummerSortierbar().toLowerCase();
+			listkey = cachename + this.getStrasse().toLowerCase() + this.getHousenumberNormalized();
 		else if(this.fieldsForUniqueAddress.compareTo(HousenumberCollection.FieldsForUniqueAddress.STREET_POSTCODE_HOUSENUMBER) == 0)
-			listkey = cachename + this.getStrasse().toLowerCase()  + this.getPostcode().toLowerCase() + this.getHausnummerSortierbar().toLowerCase();
+			listkey = cachename + this.getStrasse().toLowerCase()  + this.getPostcode().toLowerCase() + this.getHousenumberNormalized();
 		else if(this.fieldsForUniqueAddress.compareTo(HousenumberCollection.FieldsForUniqueAddress.POSTCODE_HOUSENUMBER) == 0)
-			listkey = cachename + this.getPostcode().toLowerCase() + this.getHausnummerSortierbar().toLowerCase();
+			listkey = cachename + this.getPostcode().toLowerCase() + this.getHousenumberNormalized();
 		return listkey;
 	}
 
@@ -127,11 +125,11 @@ public class Housenumber {
 
 		if(		(this.alternateFieldsForUniqueAddress.compareTo(HousenumberCollection.FieldsForUniqueAddress.STREET_HOUSENUMBER) == 0)
 			||	(this.alternateFieldsForUniqueAddress.compareTo(HousenumberCollection.FieldsForUniqueAddress.STREETLOCALIZED_HOUSENUMBER) == 0))
-			listkey = this.getStrasse().toLowerCase() + this.getHausnummerSortierbar().toLowerCase();
+			listkey = this.getStrasse().toLowerCase() + this.getHousenumberNormalized();
 		else if(this.alternateFieldsForUniqueAddress.compareTo(HousenumberCollection.FieldsForUniqueAddress.STREET_POSTCODE_HOUSENUMBER) == 0)
-			listkey = this.getStrasse().toLowerCase()  + this.getPostcode().toLowerCase() + this.getHausnummerSortierbar().toLowerCase();
+			listkey = this.getStrasse().toLowerCase()  + this.getPostcode().toLowerCase() + this.getHousenumberNormalized();
 		else if(this.alternateFieldsForUniqueAddress.compareTo(HousenumberCollection.FieldsForUniqueAddress.POSTCODE_HOUSENUMBER) == 0)
-			listkey = this.getPostcode().toLowerCase() + this.getHausnummerSortierbar().toLowerCase();
+			listkey = this.getPostcode().toLowerCase() + this.getHousenumberNormalized();
 		return listkey;
 	}
 
@@ -228,7 +226,7 @@ public class Housenumber {
 
 		boolean entry_changed = false;
 		String changes_string = "";
-		if(	(this.hausnummer_normalisiert.equals(in_entry.hausnummer_normalisiert))		// check for equal treffertyp is not correct. Change of treffertyp wasn't recognized
+		if(	(this.getHousenumberNormalized().equals(in_entry.getHousenumberNormalized()))		// check for equal treffertyp is not correct. Change of treffertyp wasn't recognized
 		) {
 
 //ToDo: if two objects with same prio exists for one housenumber, they will be used for every second evaluation,
@@ -566,7 +564,7 @@ public class Housenumber {
 			if(isHousenumberaddition_exactly) {
 				this.hausnummer_normalisiert = hausnummersortierbar;
 			} else {
-				this.hausnummer_normalisiert = hausnummersortierbar.toLowerCase();
+				this.hausnummer_normalisiert = hausnummersortierbar.toLowerCase().replace(" ",  "");
 			}
 			//System.out.println("in .normalize of class Entry: set .hausnummer_sortierbar to ===" + this.hausnummer_sortierbar +"===");
 		}
@@ -590,7 +588,7 @@ public class Housenumber {
 	/**
 	 * @return the hausnummer
 	 */
-	public String getHausnummerNormalisiert() {
+	public String getHousenumberNormalized() {
 		return hausnummer_normalisiert;
 	}
 
@@ -601,7 +599,7 @@ public class Housenumber {
 		return hausnummer_sortierbar;
 	}
 
-	
+
 	/**
 	 * @return the strasse
 	 */
