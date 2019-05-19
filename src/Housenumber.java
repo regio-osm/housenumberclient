@@ -559,13 +559,14 @@ public class Housenumber {
 			for(int anzi=0;anzi<(4-numstellen);anzi++)
 				hausnummersortierbar += "0";
 			hausnummersortierbar += hausnummer;
-			this.hausnummer_sortierbar = hausnummersortierbar;
 			
 			if(isHousenumberaddition_exactly) {
 				this.hausnummer_normalisiert = hausnummersortierbar;
 			} else {
 				this.hausnummer_normalisiert = hausnummersortierbar.toLowerCase().replace(" ",  "");
 			}
+
+			this.hausnummer_sortierbar = this.hausnummer_normalisiert;
 			//System.out.println("in .normalize of class Entry: set .hausnummer_sortierbar to ===" + this.hausnummer_sortierbar +"===");
 		}
 	}

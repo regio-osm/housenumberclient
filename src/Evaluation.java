@@ -13,7 +13,6 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.text.DateFormat;
-import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 import java.util.logging.ConsoleHandler;
@@ -23,8 +22,6 @@ import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
-
-import org.openstreetmap.osmosis.core.bound.v0_6.BoundComputer;
 
 import de.regioosm.housenumbers.Applicationconfiguration;
 
@@ -40,11 +37,12 @@ public class Evaluation {
 	private String jobname = "";
 	private Long jobid = 0L;
 	private String subid = "";
-	private String serverobjectid = "";
+	private String serverjobqueueid = "";
 	private String uselanguagecode = "";
 	private String osmdatasource = "";
 	public Long evaluationtime = 0L;
 	public Long osmtime = 0L;
+	@Deprecated
 	public HousenumberCollection housenumberlist = new HousenumberCollection();
 	public static final Logger logger = Logger.getLogger(Evaluation.class.getName());
 	public static Integer onlyPartOfStreetnameIndexNo = -1;
@@ -123,7 +121,7 @@ public class Evaluation {
 	}
 	
 	public String getJobServerobjectid() {
-		return this.serverobjectid;
+		return this.serverjobqueueid;
 	}
 
 	public String getSubid() {
@@ -131,7 +129,7 @@ public class Evaluation {
 	}
 	
 	public String getServerobjectid() {
-		return this.serverobjectid;
+		return this.serverjobqueueid;
 	}
 
 	public Integer getOnlyPartOfStreetnameIndexNo() {
@@ -142,6 +140,7 @@ public class Evaluation {
 		return this.onlyPartOfStreetnameSeparator;
 	}
 
+	@Deprecated
 	public HousenumberCollection getHousenumberlist() {
 		return this.housenumberlist;
 	}
@@ -152,6 +151,7 @@ public class Evaluation {
 	}
 
 
+	@Deprecated
 	public void setHousenumberAdditionCaseSensity(boolean casesensity) {
 		housenumberlist.setHousenumberadditionCaseSentity(casesensity);
 	}
@@ -216,15 +216,15 @@ public class Evaluation {
 	 * @param job
 	 */
 	public void setJobData(Job job) {
-		this.country = job.country;
-		this.countrycode = job.countrycode;
-		this.municipality = job.municipality;
-		this.officialkeysId = job.officialkeysId;
-		this.adminLevel = job.adminLevel;
-		this.jobname = job.jobname;
-		this.jobid = job.jobid;
-		this.subid = job.subid;
-		this.serverobjectid = job.serverobjectid;
+		this.country = job.getCountry();
+		this.countrycode = job.getCountrycode();
+		this.municipality = job.getMunicipality();
+		this.officialkeysId = job.getOfficialkeysID();
+		this.adminLevel = job.getAdminlevel();
+		this.jobname = job.getJobname();
+		this.jobid = job.getJobID();
+		this.subid = job.getSubareaID();
+		this.serverjobqueueid = job.getServerQueueJobId();
 	}
 
 	
@@ -240,6 +240,7 @@ public class Evaluation {
 	/**
 	 * load the official housenumber list. At this time, unsure, if from one specific source or multiple inputs (pbf, overpass-query, osm2pgsql ...)
 	 */
+	@Deprecated
 	public void loadOfficialHousenumberlist() {
 		
 	}
@@ -549,16 +550,19 @@ public class Evaluation {
 			Evaluation evaluation = new Evaluation();
 	
 			evaluation.setMunicipality(parameterCountry, "", parameterMunicipiality);
-			evaluation.setHousenumberAdditionCaseSensity(parameterHousenumbersCaseSensity);
 			evaluation.setUselanguagecode(parameterLanguagecode);
+
+			HousenumberCollection list_housenumbers = new HousenumberCollection();
+			HousenumberCollection osm_housenumbers = new HousenumberCollection();
+			HousenumberCollection evaluated_housenumbers = new HousenumberCollection();
+			
+			list_housenumbers.setHousenumberadditionCaseSentity(parameterHousenumbersCaseSensity);
+			osm_housenumbers.setHousenumberadditionCaseSentity(parameterHousenumbersCaseSensity);
 	
 			//evaluation.setOnlyPartOfStreetnameSeparator(" - ");	// special settings for addr:street Values, when there are two languages in one value
 			//evaluation.setOnlyPartOfStreetnameIndexNo(1);			// special settings for addr:street Values, when there are two languages in one value
 	
 	
-			HousenumberCollection list_housenumbers = new HousenumberCollection();
-			HousenumberCollection osm_housenumbers = new HousenumberCollection();
-			HousenumberCollection evaluated_housenumbers = new HousenumberCollection();
 	
 				// local file, work offline (only connect to osm data via overpass
 			if(! parameterImportdateiname.equals("")) {
@@ -661,9 +665,11 @@ public class Evaluation {
 					osm_housenumbers.clear();
 					evaluated_housenumbers.clear();
 					
+					list_housenumbers.setHousenumberadditionCaseSentity(parameterHousenumbersCaseSensity);
+					osm_housenumbers.setHousenumberadditionCaseSentity(parameterHousenumbersCaseSensity);
+					
 					
 					java.util.Date dbloadstart = new java.util.Date();
-					list_housenumbers.clear();
 					//list_housenumbers = hnrreader.ReadListFromDB(evaluation);
 					if(parameterCountry.equals("Netherland")) {
 						list_housenumbers.setFieldsForUniqueAddress(HousenumberCollection.FieldsForUniqueAddress.STREET_POSTCODE_HOUSENUMBER);
@@ -685,10 +691,11 @@ if(parameterMunicipiality.equals("Köln")) {
 					java.util.Date dbloadend = new java.util.Date();
 					java.util.Date overpassloadstart = new java.util.Date();
 					osm_housenumbers.clear();
+					osm_housenumbers.setHousenumberadditionCaseSentity(parameterHousenumbersCaseSensity);
 					osm_housenumbers.setFieldsForUniqueAddress(list_housenumbers.getFieldsForUniqueAddress());
 					osm_housenumbers.setAlternateFieldsForUniqueAddress(list_housenumbers.getAlternateFieldsForUniqueAddress());
 	
-					HousenumberCollection tempreceived_osm_housenumbers = osmreader.ReadData(evaluation, osm_housenumbers, actjob.osmrelationid);
+					HousenumberCollection tempreceived_osm_housenumbers = osmreader.ReadData(evaluation, osm_housenumbers, actjob.getOSMRelationID());
 
 					muninoverpassOutput = new PrintWriter(new BufferedWriter(new OutputStreamWriter(
 						new FileOutputStream(muninosmoverpassPathandFilename),StandardCharsets.UTF_8)));
@@ -717,7 +724,7 @@ if(parameterMunicipiality.equals("Köln")) {
 					uploadend = new java.util.Date();
 						
 					String importworkoutputline = "";
-					importworkoutputline = actjob.municipality + "/" + actjob.jobname + "\t" + dateformat.format(jobstart) + "\t";
+					importworkoutputline = actjob.getMunicipality() + "/" + actjob.getJobname() + "\t" + dateformat.format(jobstart) + "\t";
 					importworkoutputline += dateformat.format(uploadend) + "\t" + "successful";
 					workprogressOutput = new PrintWriter(new BufferedWriter(new OutputStreamWriter(
 							new FileOutputStream(importworkPathandFilename, true),StandardCharsets.UTF_8)));
