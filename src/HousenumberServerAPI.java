@@ -83,6 +83,7 @@ public class HousenumberServerAPI {
 
 			String boundary = Long.toHexString(System.currentTimeMillis()); // Just generate some unique random value.
 
+			System.out.println("start API-Call (Post-Mode) ===" + url_string + "=== ...");
 			URLConnection connection = new URL(url_string).openConnection();
 			connection.setDoOutput(true); // This sets request method to POST.
 			connection.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
@@ -149,7 +150,7 @@ public class HousenumberServerAPI {
 
 					if(fileline.equals(""))
 						continue;
-					System.out.println("first char ===" + fileline.substring(0,1) + "===");
+						// ignore comment-line
 					if(fileline.substring(0,1).equals("#")) {
 						System.out.println("ignore comment line ===" + fileline + "===");
 						continue;
@@ -157,9 +158,11 @@ public class HousenumberServerAPI {
 					String linecolumns[] = fileline.split("\t");
 					
 					Job actjob = null; 
+						// elder version of Respone doesn't contain job-Id column
 					if(linecolumns.length == 8) {
 						actjob = new Job(linecolumns[0], linecolumns[1], linecolumns[2], linecolumns[3], 
 							Integer.parseInt(linecolumns[4]), linecolumns[5], linecolumns[6], Long.parseLong(linecolumns[7]));
+						// new version of Respone does contain job-Id column
 					} else if(linecolumns.length == 9) {
 						actjob = new Job(linecolumns[0], linecolumns[1], linecolumns[2], linecolumns[3], 
 							Integer.parseInt(linecolumns[4]), linecolumns[5],  Long.parseLong(linecolumns[8]), linecolumns[6], Long.parseLong(linecolumns[7]));
@@ -197,6 +200,7 @@ public class HousenumberServerAPI {
 
 			String boundary = Long.toHexString(System.currentTimeMillis()); // Just generate some unique random value.
 
+			System.out.println("start API-Call (Post-Mode) ===" + url_string + "=== ...");
 			URLConnection connection = new URL(url_string).openConnection();
 			connection.setDoOutput(true); // This sets request method to POST.
 			connection.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
@@ -310,6 +314,7 @@ public class HousenumberServerAPI {
 	
 			String boundary = Long.toHexString(System.currentTimeMillis()); // Just generate some unique random value.
 	
+			System.out.println("start API-Call (Post-Mode) ===" + url_string + "=== ...");
 			URLConnection connection = new URL(url_string).openConnection();
 			connection.setDoOutput(true); // This sets request method to POST.
 			connection.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
@@ -453,6 +458,7 @@ public class HousenumberServerAPI {
 			
 			String boundary = Long.toHexString(System.currentTimeMillis()); // Just generate some unique random value.
 
+			System.out.println("start API-Call (Post-Mode) ===" + url_string + "=== ...");
 			URLConnection connection = new URL(url_string).openConnection();
 			connection.setDoOutput(true); // This sets request method to POST.
 			connection.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
@@ -564,6 +570,7 @@ public class HousenumberServerAPI {
 	
 			String urlString = serverUrl + "/getHousenumberlist";
 
+			System.out.println("start API-Call (Post-Mode) ===" + urlString + "=== ...");
 			url = new URL(urlString);
 			
 			HttpURLConnection connection = (HttpURLConnection) url.openConnection();
@@ -588,7 +595,7 @@ public class HousenumberServerAPI {
 			urlParameters += "&" + "serverobjectid=" + URLEncoder.encode(evaluation.getServerobjectid(),"UTF-8");
 
 			OutputStreamWriter writer = new OutputStreamWriter(connection.getOutputStream());
-			System.out.println("upload_string==="+urlParameters+"===");
+			System.out.println("API-Call Parameters ==="+urlParameters+"===");
 			logger.log(Level.FINE, "Request to get housenumberlist ===" + urlParameters + "===");
 			writer.write(urlParameters);
 			writer.flush();
