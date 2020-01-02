@@ -243,7 +243,14 @@ public class OsmDataReader {
 		return return_string_array;
 	}
 
-
+	/**
+	 * 
+	 * @param evaluation
+	 * @param housenumbers
+	 * @param relationsid
+	 * @return  found housenumbers in OSM. If there are zero housenumbers in OSM, an empty housenumber collection will be returned.
+	 * 			If overpass or db request failed, null will be returned 
+	 */
 	public HousenumberCollection ReadData(final Evaluation evaluation, final HousenumberCollection housenumbers, Long relationsid) {
 		String osmdatasource = evaluation.getOsmdatasource();
 		if(osmdatasource.equals("overpass")) {
@@ -258,7 +265,14 @@ public class OsmDataReader {
 		}
 	}
 
-
+	/**
+	 * 
+	 * @param evaluation
+	 * @param housenumbers
+	 * @param relationsid
+	 * @return  found housenumbers in OSM. If there are zero housenumbers in OSM, an empty housenumber collection will be returned.
+	 * 			If overpass request failed, null will be returned 
+	 */
 	private HousenumberCollection ReadDataFromOverpass(final Evaluation evaluation, final HousenumberCollection housenumbers, Long relationsid) {
 		URL                url; 
 		URLConnection      urlConn; 
@@ -463,12 +477,19 @@ public class OsmDataReader {
 				+ File.separator + downloadtime + ".osm";
 
 			try {
-				osmFile = new File(filename);
-				PrintWriter osmOutput = new PrintWriter(new BufferedWriter(new OutputStreamWriter(
-						new FileOutputStream(filename),StandardCharsets.UTF_8)));
-				osmOutput.println(osmresultcontent.toString());
-				osmOutput.close();
-				logger.log(Level.INFO, "Saved Overpass OSM Data Content to file " + filename);
+				String first100bytes = osmresultcontent.toString().substring(0, 100);
+				if ( first100bytes.indexOf("<?xml version=\"1.0\" encoding=\"UTF-8\"?>") == 0) {
+					osmFile = new File(filename);
+					PrintWriter osmOutput = new PrintWriter(new BufferedWriter(new OutputStreamWriter(
+							new FileOutputStream(filename),StandardCharsets.UTF_8)));
+					osmOutput.println(osmresultcontent.toString());
+					osmOutput.close();
+					logger.log(Level.INFO, "Saved Overpass OSM Data Content to file " + filename);
+				} else {
+					logger.log(Level.WARNING, "osm result file doesn't start with xml header line, will be ignored");
+					logger.log(Level.WARNING," (cont) Content is ===" + osmresultcontent + "===");
+					return null;
+				}
 			} catch (IOException ioe) {
 				logger.log(Level.SEVERE, "Error, when tried to save Overpass OSM Data in file " + filename);
 				logger.log(Level.SEVERE, ioe.toString());
